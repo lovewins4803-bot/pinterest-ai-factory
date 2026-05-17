@@ -3,9 +3,19 @@ import express from "express";
 const app = express();
 app.use(express.json());
 
-// =============================
-// PINTEREST AI VIRAL ENGINE
-// =============================
+// ==============================
+// SMART PINTEREST AI ENGINE v2
+// ==============================
+
+function pick(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function cleanTag(text) {
+  return text.replace(/\s/g, "").replace(/[^a-zA-Z0-9]/g, "");
+}
+
+// Main endpoint
 app.post("/generate-pin", (req, res) => {
   try {
     const { product } = req.body;
@@ -15,36 +25,61 @@ app.post("/generate-pin", (req, res) => {
     }
 
     const hooks = [
-      "You won’t believe this",
-      "This is blowing up right now",
+      "This is going viral",
       "Everyone is saving this",
-      "Stop scrolling for this",
-      "Pinterest is obsessed with this"
+      "Stop scrolling now",
+      "Pinterest can’t stop sharing this",
+      "Hidden gem you need to see"
     ];
 
-    const hook = hooks[Math.floor(Math.random() * hooks.length)];
+    const benefits = [
+      "saves time instantly",
+      "makes life easier",
+      "looks aesthetic and clean",
+      "budget-friendly solution",
+      "trending in 2026"
+    ];
 
-    const title = `🔥 ${hook}: ${product} That Everyone Wants`;
+    const hook = pick(hooks);
+    const benefit = pick(benefits);
+
+    const title = `🔥 ${hook}: ${product} That ${benefit}`;
 
     const description = `
-${product} is trending right now on Pinterest.
+${product} is one of the most trending ideas right now on Pinterest.
 
-✔ Budget-friendly
-✔ Highly aesthetic
-✔ Extremely useful
+✔ ${benefit}
+✔ Highly shareable
+✔ Perfect for daily use
 
-This is going viral because people can’t stop saving it.
+People are saving this fast — don’t miss the trend.
 `;
 
-    const hashtags = `#${product.replace(/\s/g, "")} #pinterest #viral #trending #aesthetic #musthave #lifehack`;
+    const hashtags = [
+      `#${cleanTag(product)}`,
+      "#pinterest",
+      "#viral",
+      "#trending",
+      "#aesthetic",
+      "#musthave",
+      "#lifehack"
+    ].join(" ");
 
     const overlay_text = `${hook.toUpperCase()}`;
+
+    // BONUS: multiple variations (for scaling Pinterest)
+    const variations = [
+      `${hook}: ${product}`,
+      `Why everyone is talking about ${product}`,
+      `${product} that is going viral`
+    ];
 
     res.json({
       title,
       description,
       hashtags,
-      overlay_text
+      overlay_text,
+      variations
     });
 
   } catch (err) {
@@ -52,15 +87,11 @@ This is going viral because people can’t stop saving it.
   }
 });
 
-// =============================
-// HEALTH CHECK ROUTE
-// =============================
+// Health check
 app.get("/", (req, res) => {
-  res.send("Pinterest AI Factory is LIVE 🚀 (FREE VIRAL ENGINE)");
+  res.send("Pinterest AI Factory v2 is LIVE 🚀");
 });
 
-// =============================
-// RENDER PORT FIX
-// =============================
+// Render fix
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("Server running on port", PORT));
