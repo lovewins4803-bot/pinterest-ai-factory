@@ -3,163 +3,153 @@ const app = express();
 app.use(express.json());
 
 /* =========================
-   MEMORY SYSTEM
+   MEMORY
 ========================= */
 let pinQueue = [];
 let postedPins = [];
+let userProducts = [];
 
 /* =========================
-   LIVE PRODUCT FEED (SIMULATED REAL MARKET)
-   This behaves like Amazon/CJ affiliate API feed
+   ADD PRODUCT (USER FEED)
 ========================= */
+app.post("/add-product",(req,res)=>{
 
-function generateLiveFeed() {
-  const niches = ["kitchen", "home", "beauty", "bathroom", "aesthetic"];
+ const {name,link,image,niche} = req.body;
 
-  const products = [
-    "Gold Kitchen Organizer Set",
-    "Luxury Marble Soap Dispenser",
-    "Acrylic Makeup Storage Box",
-    "Modern LED Mirror Light",
-    "Stainless Steel Sink Rack",
-    "Velvet Jewelry Organizer",
-    "Minimalist Desk Lamp",
-    "Glass Spice Jar Set",
-    "Hotel Style Bathroom Set",
-    "Smart Motion Sensor Light"
-  ];
+ const product = {
+   id: Date.now(),
+   name,
+   link: link || null,
+   image: image || null,
+   niche: niche || "aesthetic",
+   source:"USER"
+ };
 
-  return products.map((name, i) => {
-    return {
-      id: Date.now() + i,
-      name,
-      niche: niches[i % niches.length],
+ userProducts.push(product);
 
-      // simulated real affiliate metrics
-      rating: (4 + Math.random()).toFixed(1),
-      reviews: Math.floor(Math.random() * 20000 + 500),
-      boughtLastMonth: Math.floor(Math.random() * 10000 + 100),
-      bestSellerRank: Math.floor(Math.random() * 100 + 1),
-      trendGrowth: Math.floor(Math.random() * 40 + 60),
-      price: Math.floor(Math.random() * 60 + 10)
-    };
-  });
+ res.json({
+   message:"Product added",
+   product
+ });
+});
+
+/* =========================
+   SIMULATED PRODUCTS (FALLBACK)
+========================= */
+function generateSimulated(){
+
+ return [
+   {name:"Gold Kitchen Organizer", niche:"kitchen", score:85},
+   {name:"Marble Soap Dispenser", niche:"home", score:88},
+   {name:"Luxury LED Mirror", niche:"bathroom", score:92},
+   {name:"Glass Spice Jar Set", niche:"kitchen", score:90}
+ ];
 }
 
 /* =========================
-   SCORING ENGINE (AFFORDABLE LUXURY FOCUS)
+   INTELLIGENCE SCORING
 ========================= */
-function score(p) {
-  let s = 0;
+function score(p, source){
 
-  s += parseFloat(p.rating) * 15;
-  s += Math.log10(p.reviews) * 10;
-  s += p.boughtLastMonth / 250;
-  s += (100 - p.bestSellerRank);
-  s += p.trendGrowth;
+ let score = 0;
 
-  if (p.price < 50) s += 25; // Affordable luxury boost
-  if (p.niche === "aesthetic") s += 20;
+ if(source==="USER") score += 30;
+ if(p.niche==="aesthetic") score += 20;
+ if(p.link) score += 15;
+ if(p.image) score += 10;
 
-  return Math.floor(s);
+ score += Math.floor(Math.random()*30);
+
+ return score;
 }
 
 /* =========================
-   SMART PRODUCT PICKER (LIVE ENGINE)
+   SMART ENGINE (COMPARE + DECIDE BEST)
 ========================= */
-app.get("/smart-product", (req, res) => {
+app.get("/smart-product",(req,res)=>{
 
-  const feed = generateLiveFeed();
+ let pool = [];
 
-  let best = null;
-  let bestScore = 0;
+ if(userProducts.length > 0){
+   pool = userProducts;
+ } else {
+   pool = generateSimulated();
+ }
 
-  feed.forEach(p => {
-    const s = score(p);
-    if (s > bestScore) {
-      bestScore = s;
-      best = p;
-    }
-  });
+ let best = null;
+ let bestScore = 0;
 
-  const decision = bestScore > 230 ? "POST" : "HOLD";
+ pool.forEach(p=>{
 
-  const pin = {
-    product: best.name,
-    niche: best.niche,
-    score: bestScore,
-    rating: best.rating,
-    reviews: best.reviews,
-    boughtLastMonth: best.boughtLastMonth,
-    title: `Stop scrolling 😍 ${best.name}`,
-    description: `${best.name} is trending in US Pinterest + high conversion affiliate product.`,
-    hashtags: "#amazonfinds #luxuryfinds #pinterestviral #affiliatemarketing",
-    best_time: "2 PM Ethiopia (US morning peak)",
-    decision
-  };
+   const s = score(p,p.source || "SIM");
 
-  if (decision === "POST") {
-    pinQueue.push(pin);
-  }
+   if(s > bestScore){
+     bestScore = s;
+     best = p;
+   }
 
-  res.json(pin);
+ });
+
+ // IMAGE DECISION LOGIC
+ let finalImage =
+   best.image ||
+   best.link ||
+   "AI_GENERATED_IMAGE";
+
+ const pin = {
+   product: best.name,
+   score: bestScore,
+   image: finalImage,
+   source: best.source || "SIMULATED",
+   decision: bestScore > 70 ? "POST" : "HOLD",
+   title:`Stop scrolling 😍 ${best.name}`,
+   description:`Affordable Luxury Find trending on Pinterest USA`,
+   hashtags:"#amazonfinds #luxuryfinds #pinterestviral",
+   best_time:"2 PM Ethiopia"
+ };
+
+ if(pin.decision==="POST"){
+   pinQueue.push(pin);
+ }
+
+ res.json(pin);
 });
 
 /* =========================
-   AMAZON LINK INPUT
+   QUEUE
 ========================= */
-app.get("/generate-from-link", (req, res) => {
+app.get("/queue",(req,res)=>res.json(pinQueue));
+app.get("/posted",(req,res)=>res.json(postedPins));
 
-  const name = req.query.name || "Amazon Product";
-  const link = req.query.link || "Amazon Link";
-
-  const pin = {
-    id: Date.now(),
-    product: name,
-    link,
-    title: "Amazon Find You Didn’t Know You Needed 😍",
-    description: `${name} is trending in USA Pinterest right now.`,
-    hashtags: "#amazonfinds #luxuryfinds #viralproducts",
-    status: "QUEUED"
-  };
-
-  pinQueue.push(pin);
-
-  res.json(pin);
+/* =========================
+   CLEAR
+========================= */
+app.get("/clear",(req,res)=>{
+ pinQueue.length = 0;
+ res.json({message:"cleared"});
 });
 
 /* =========================
-   QUEUE SYSTEM
+   AUTO POST
 ========================= */
-app.get("/queue", (req, res) => {
-  res.json(pinQueue);
-});
+setInterval(()=>{
 
-app.get("/posted", (req, res) => {
-  res.json(postedPins);
-});
+ if(pinQueue.length===0) return;
+
+ const pin = pinQueue.shift();
+ pin.status="POSTED";
+ pin.postedAt=new Date();
+
+ postedPins.push(pin);
+
+ console.log("POSTED:",pin.product);
+
+},60000);
 
 /* =========================
-   AUTO POST ENGINE
-========================= */
-setInterval(() => {
-
-  if (pinQueue.length === 0) return;
-
-  const pin = pinQueue.shift();
-  pin.status = "POSTED";
-  pin.postedAt = new Date();
-
-  postedPins.push(pin);
-
-  console.log("AUTO POSTED:", pin.product);
-
-}, 60000);
-
-/* =========================
-   START SERVER
+   START
 ========================= */
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log("PIN AI FACTORY v7 LIVE FEED ENGINE 🚀");
+app.listen(PORT,()=>{
+ console.log("PIN AI FACTORY v8 HYBRID INTELLIGENCE 🚀");
 });
