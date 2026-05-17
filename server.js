@@ -71,7 +71,6 @@ app.post("/generate-pin", (req,res)=>{
 // 2. DAILY AFFILIATE BRAIN
 // -------------------
 
-app.get("/daily-plan",(req,res)=>{
   const product = products[Math.floor(Math.random()*products.length)];
 
   res.json({
