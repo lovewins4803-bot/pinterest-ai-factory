@@ -9,14 +9,14 @@ app.use(express.json());
 let pinQueue = [];
 
 /* =========================
-   HOME
+   HOME ROUTE
 ========================= */
 app.get("/", (req, res) => {
   res.send("PIN AI FACTORY v2 RUNNING 🚀");
 });
 
 /* =========================
-   DAILY PLAN (AI GENERATOR)
+   DAILY PLAN ENGINE
 ========================= */
 app.get("/daily-plan", (req, res) => {
 
@@ -24,7 +24,8 @@ app.get("/daily-plan", (req, res) => {
     { name: "Air Fryer Rack", niche: "kitchen", demand: 9 },
     { name: "Fridge Organizer", niche: "home", demand: 8 },
     { name: "Silicone Cooking Set", niche: "kitchen", demand: 7 },
-    { name: "Bathroom Storage Rack", niche: "home", demand: 8 }
+    { name: "Bathroom Storage Rack", niche: "home", demand: 8 },
+    { name: "Non-Slip Kitchen Mat", niche: "home", demand: 6 }
   ];
 
   const pick = products[Math.floor(Math.random() * products.length)];
@@ -35,9 +36,19 @@ app.get("/daily-plan", (req, res) => {
   if (pick.niche === "kitchen") score += 10;
   if (pick.niche === "home") score += 8;
 
-  const title = `I wish I knew this sooner 😳 ${pick.name}`;
-  const hashtags = "#amazonfinds #viral #pinterest #usa";
+  const titles = [
+    `I wish I knew this sooner 😳 ${pick.name}`,
+    `Stop scrolling 🛑 ${pick.name}`,
+    `Trending Pinterest find 🔥 ${pick.name}`,
+    `Amazon hidden gem 💡 ${pick.name}`
+  ];
+
+  const title = titles[Math.floor(Math.random() * titles.length)];
+
+  const hashtags = "#amazonfinds #viral #pinterest #usa #affiliatemarketing";
+
   const best_time = "2 PM Ethiopia (US morning peak)";
+
   const decision = score >= 70 ? "POST" : "SKIP";
 
   res.json({
@@ -47,12 +58,13 @@ app.get("/daily-plan", (req, res) => {
     hashtags,
     best_time,
     decision,
-    score
+    score,
+    system: "PIN AI FACTORY v2"
   });
 });
 
 /* =========================
-   GENERATE PIN → ADD TO QUEUE
+   GENERATE PIN → QUEUE SYSTEM
 ========================= */
 app.get("/generate-pin", (req, res) => {
 
@@ -67,7 +79,7 @@ app.get("/generate-pin", (req, res) => {
   pinQueue.push(pin);
 
   res.json({
-    message: "Pin added to queue",
+    message: "Pin successfully added to queue",
     pin,
     queueSize: pinQueue.length
   });
@@ -81,6 +93,16 @@ app.get("/queue", (req, res) => {
   res.json({
     total: pinQueue.length,
     pins: pinQueue
+  });
+});
+
+/* =========================
+   HEALTH CHECK (RENDER)
+========================= */
+app.get("/health", (req, res) => {
+  res.json({
+    status: "ok",
+    service: "PIN AI FACTORY v2"
   });
 });
 
