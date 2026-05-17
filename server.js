@@ -3,132 +3,72 @@ import express from "express";
 const app = express();
 app.use(express.json());
 
-/* =========================
-   AFFILIATE ENGINE
-========================= */
+/* ===============================
+   TREND DATABASE (FREE)
+================================ */
 
-function buildAffiliateLinks(product) {
-  const q = encodeURIComponent(product);
+const monthlyTrends = {
+  1: ["New Year goals", "Home reset", "Declutter"],
+  2: ["Valentines gifts", "Self care", "Romantic home"],
+  3: ["Spring cleaning", "Organization", "Fresh home"],
+  4: ["Spring decor", "Outdoor living", "Gardening"],
+  5: ["Mother's day", "Kitchen upgrades", "Home refresh"],
+  6: ["Summer prep", "Travel essentials", "Beach items"],
+  7: ["Summer hacks", "Outdoor kitchen", "Vacation home"],
+  8: ["Back to school", "Study setup", "Dorm essentials"],
+  9: ["Fall decor", "Cozy home", "Organization reset"],
+  10:["Halloween", "Autumn home", "Cozy kitchen"],
+  11:["Black Friday", "Gift ideas", "Holiday prep"],
+  12:["Christmas gifts", "Holiday kitchen", "Winter home"]
+};
 
-  return {
-    amazon: `https://www.amazon.com/s?k=${q}`,
-    ebay: `https://www.ebay.com/sch/i.html?_nkw=${q}`,
-    cj: `https://www.cj.com/search?query=${q}`,
-    admitad: `https://www.admitad.com/search/?q=${q}`,
-    jvzoo: `https://www.jvzoo.com/content-search/${q}`
-  };
+const marketingAngles = [
+  "Problem solving",
+  "Before and after",
+  "Listicle",
+  "Urgency",
+  "Curiosity",
+  "Luxury aesthetic",
+  "Budget hack",
+  "Gift idea",
+  "Trend alert"
+];
+
+function randomItem(arr){
+  return arr[Math.floor(Math.random()*arr.length)];
 }
 
-/* =========================
-   PIN GENERATOR
-========================= */
+/* ===============================
+   TREND REACTIVE PIN GENERATOR
+================================ */
 
-function generatePin(product) {
-  return {
-    title: `🔥 ${product} You Need Now`,
-    description: `${product} is trending right now and getting viral attention.`,
-    hashtags: "#viral #affiliate #pinterest #amazonfinds #trending",
-    overlay_text: "LIMITED TIME DEAL"
-  };
-}
+app.post("/generate-pin", (req,res)=>{
+  const { product, niche } = req.body;
+  const month = new Date().getMonth()+1;
 
-/* =========================
-   CREATE CAMPAIGN
-========================= */
+  const trend = randomItem(monthlyTrends[month]);
+  const angle = randomItem(marketingAngles);
 
-let campaigns = [];
+  const title = `🔥 ${trend}: ${product} Everyone Is Buying`;
+  const description =
+  `This ${product} is trending for ${trend}. 
+Perfect for people searching ${niche}. 
+Pinterest users are saving this like crazy!`;
 
-app.post("/create-campaign", (req, res) => {
-  const { product } = req.body;
+  const hashtags = `#amazonfinds #viralproducts #${niche.replace(" ","")} #musthave #trendingnow`;
 
-  if (!product) {
-    return res.status(400).json({ error: "product required" });
-  }
-
-  const campaign = {
-    id: Date.now(),
-    product,
-    pin: generatePin(product),
-    links: buildAffiliateLinks(product),
-    clicks: 0,
-    earnings: 0
-  };
-
-  campaigns.push(campaign);
+  const overlay = `${trend.toUpperCase()} MUST HAVE`;
 
   res.json({
-    message: "CAMPAIGN CREATED",
-    campaign
+    trend,
+    angle,
+    title,
+    description,
+    hashtags,
+    overlay
   });
 });
 
-/* =========================
-   CLICK TRACKING
-========================= */
+app.get("/", (req,res)=>res.send("Trend Engine Running 🚀"));
 
-app.post("/click", (req, res) => {
-  const { campaignId, network } = req.body;
-
-  const campaign = campaigns.find(c => c.id === campaignId);
-
-  if (!campaign) {
-    return res.status(404).json({ error: "not found" });
-  }
-
-  campaign.clicks += 1;
-
-  let profit = 0;
-
-  if (network === "amazon") profit = 0.5;
-  if (network === "ebay") profit = 0.7;
-  if (network === "cj") profit = 1.2;
-  if (network === "admitad") profit = 1.0;
-  if (network === "jvzoo") profit = 2.5;
-
-  campaign.earnings += profit;
-
-  res.json({
-    message: "CLICK TRACKED",
-    profit,
-    campaign
-  });
-});
-
-/* =========================
-   VIEW ALL CAMPAIGNS
-========================= */
-
-app.get("/campaigns", (req, res) => {
-  res.json(campaigns);
-});
-
-/* =========================
-   PIN GENERATOR API
-========================= */
-
-app.post("/generate-pin", (req, res) => {
-  const { product } = req.body;
-
-  res.json(generatePin(product));
-});
-
-/* =========================
-   HOME DASHBOARD
-========================= */
-
-app.get("/", (req, res) => {
-  res.send(`
-    <h1>💰 Affiliate Profit Engine v2</h1>
-    <p>System Running 🚀</p>
-  `);
-});
-
-/* =========================
-   START SERVER
-========================= */
-
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log("Profit Engine v2 running on port", PORT);
-});
+app.listen(3000, ()=>console.log("Server running"));
