@@ -209,3 +209,8 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`PIN AI FACTORY v4 running on port ${PORT}`);
 });
+
+app.get("/clear", (req,res)=>{
+queue.length = 0;
+res.json({message:"queue cleared"});
+});
