@@ -1,43 +1,44 @@
 import express from "express";
-import fetch from "node-fetch";
 
 const app = express();
 app.use(express.json());
 
-app.post("/generate-pin", async (req, res) => {
+// FREE Pinterest AI generator (no API, no billing)
+app.post("/generate-pin", (req, res) => {
   try {
     const { product } = req.body;
 
-    const prompt = `
-    Create a viral Pinterest pin package for this product:
-    ${product}
+    if (!product) {
+      return res.status(400).json({ error: "product is required" });
+    }
 
-    Return JSON with:
-    title
-    description
-    hashtags
-    overlay_text
-    `;
+    const title = `🔥 Must-Have ${product} You Didn’t Know You Needed`;
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [{ role: "user", content: prompt }],
-      })
+    const description = `Discover ${product} that is trending right now.
+Perfect for everyday use and highly recommended by users on Pinterest.
+Don’t miss out before it goes viral!`;
+
+    const hashtags = `#${product.replace(/\s/g, "")} #pinterest #viral #amazonfinds #trending #musthave`;
+
+    const overlay_text = `DON'T MISS THIS ${product.toUpperCase()}`;
+
+    res.json({
+      title,
+      description,
+      hashtags,
+      overlay_text
     });
 
-    const data = await response.json();
-    res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get("/", (req,res)=>res.send("Pinterest AI Factory running"));
+// Test route
+app.get("/", (req, res) => {
+  res.send("Pinterest AI Factory FREE VERSION is running 🚀");
+});
 
-app.listen(3000, () => console.log("Server running"));
+// Render port fix
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log("Server running on port", PORT));
