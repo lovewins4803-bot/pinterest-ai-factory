@@ -1,101 +1,101 @@
-import express from "express";
+const express = require("express");
+const cors = require("cors");
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 
-// -----------------------------
-// PIN AI FACTORY CORE ENGINE (MVP)
-// -----------------------------
+const PORT = process.env.PORT || 3000;
 
-function getUSPostingTime() {
-  // Simple US best posting window simulation
+app.get("/", (req,res)=>{
+  res.send("Pinterest AI Factory Running 🚀");
+});
+
+
+// 🧠 SMART WORD POOLS (ANTI DUPLICATE ENGINE)
+const powerWords = [
+  "Must-Have","Viral","Trending","Amazon Favorite","Top Rated",
+  "Genius","Game Changing","Life Changing","Customer Favorite"
+];
+
+const angles = [
+  "Gift idea",
+  "Problem solver",
+  "Luxury aesthetic",
+  "Kitchen upgrade",
+  "Small space hack",
+  "Organization hack"
+];
+
+const niches = [
+  "kitchen gadgets",
+  "home organization",
+  "amazon finds",
+  "cleaning hacks",
+  "small apartment living"
+];
+
+const hashtagsPool = [
+  "#amazonfinds","#viralproducts","#pinterestfinds",
+  "#homeorganization","#kitchengadgets","#musthave",
+  "#lifehacks","#cleanhome","#smallspaces"
+];
+
+function random(arr){
+  return arr[Math.floor(Math.random()*arr.length)];
+}
+
+// 🧠 BEST POSTING TIME ENGINE (USA TIME → Ethiopia Time)
+function bestTimeSuggestion(){
   const times = [
-    "08:30 AM EST",
-    "12:30 PM EST",
-    "08:30 PM EST"
+    "4:00 PM Ethiopia (8 AM EST)",
+    "7:00 PM Ethiopia (11 AM EST)",
+    "1:00 AM Ethiopia (7 PM EST BEST)",
+    "3:00 AM Ethiopia (9 PM EST)"
   ];
-  return times[Math.floor(Math.random() * times.length)];
+  return random(times);
 }
 
-function convertToEthiopiaTime(usTime) {
-  return `${usTime} (≈ Ethiopia next day shift window)`;
-}
 
-function generateHashtags(product) {
-  return `#amazonfinds #viral #pinterest #affiliatemarketing #${product.replace(/\s/g, "").toLowerCase()}`;
-}
+// 🧠 PIN GENERATOR
+function generatePin(product){
 
-function generatePin(product) {
-  const hooks = [
-    "🔥 Everyone is buying this right now",
-    "💡 You didn’t know you needed this",
-    "🚀 Viral Amazon find trending now",
-    "⚡ Game-changing home upgrade",
-    "🎯 Best hidden gem product"
-  ];
-
-  const angles = [
-    "Problem Solver",
-    "Gift Idea",
-    "Home Upgrade",
-    "Budget Hack",
-    "Viral Trend"
-  ];
-
-  const hook = hooks[Math.floor(Math.random() * hooks.length)];
-  const angle = angles[Math.floor(Math.random() * angles.length)];
+  const power = random(powerWords);
+  const niche = random(niches);
+  const angle = random(angles);
+  const time = bestTimeSuggestion();
 
   return {
-    product,
-    title: `${hook}: ${product}`,
-    description: `${product} is trending right now on Pinterest and Amazon.\nPerfect for everyday use and highly recommended by buyers.\nDon’t miss this viral opportunity!`,
-    hashtags: generateHashtags(product),
-    overlay_text: `${product.toUpperCase()} MUST HAVE`,
-    pin_angle: angle,
-    affiliate_hook: `Grab this ${product} before it sells out!`,
-    seo_keywords: `${product}, amazon finds, viral products, trending items`,
-    board_suggestion: "Amazon Finds / Viral Products",
-    best_post_time: getUSPostingTime(),
-    ethiopia_time: convertToEthiopiaTime(getUSPostingTime()),
-    manual_edit: [
-      "Improve hook strength if needed",
-      "Add urgency words like 'limited', 'viral', 'trending'",
-      "Check affiliate link placement"
-    ]
+    product: product,
+    title: `🔥 ${power}: ${product} Everyone Is Buying`,
+    description:
+      `${product} is blowing up on Pinterest right now.
+Perfect for ${niche}. Pinterest users are saving this daily.
+Get yours before it goes viral.`,
+    hashtags: hashtagsPool.sort(()=>0.5-Math.random()).slice(0,5).join(" "),
+    overlay: `${power.toUpperCase()} ${product.toUpperCase()}`,
+    angle: angle,
+    best_post_time: time
   };
 }
 
-// -----------------------------
-// API ROUTE
-// -----------------------------
 
-app.post("/generate-pin", (req, res) => {
-  try {
+// 🔥 SINGLE PIN ROUTE
+app.post("/generate-pin", (req,res)=>{
+  try{
     const { product } = req.body;
-
-    if (!product) {
-      return res.status(400).json({ error: "Product is required" });
-    }
-
     const pin = generatePin(product);
-
     res.json(pin);
-
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  }catch(err){
+    res.status(500).json({error:err.message});
   }
 });
 
-// -----------------------------
-// HEALTH CHECK
-// -----------------------------
 
-app.get("/", (req, res) => {
-  res.send("Pin AI Factory MVP is running 🚀");
-});
+// 🔥 BULK PIN ROUTE (TAILWIND STYLE)
+app.post("/generate-bulk-pins", (req,res)=>{
+  try{
+    const { products } = req.body;
 
-// -----------------------------
-
-app.listen(3000, () => {
-  console.log("Pin AI Factory MVP running on port 3000");
-});
+    if(!products || !Array.isArray(products)){
+      return res.status(400).json({error:"Send
