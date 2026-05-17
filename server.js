@@ -4,35 +4,53 @@ const app = express();
 app.use(express.json());
 
 /* =========================
-   MEMORY SYSTEM
+   MEMORY
 ========================= */
 let pinQueue = [];
 let postedPins = [];
 let userProducts = [];
 
 /* =========================
-   HOME
+   AFFORDABLE LUXURY KEYWORDS
 ========================= */
-app.get("/", (req, res) => {
-res.send(`
-<h1>📌 PIN AI FACTORY v9</h1>
-<p>Hybrid Intelligence + Viral Engine + Luxury Finder</p>
-
-<ul>
-<li>/add-product (POST)</li>
-<li>/smart-product</li>
-<li>/queue</li>
-<li>/posted</li>
-</ul>
-`);
-});
+const luxuryKeywords = [
+ "gold","marble","glass","aesthetic","minimal","modern",
+ "stainless","luxury","premium","sleek","LED","organizer",
+ "spa","hotel","matte","black","white","bamboo","acrylic"
+];
 
 /* =========================
-   ADD USER PRODUCT (CURATED FEED)
+   LUXURY SCORE CHECKER
+========================= */
+function checkLuxuryFit(name) {
+
+ let score = 0;
+ let lower = name.toLowerCase();
+
+ luxuryKeywords.forEach(k => {
+   if (lower.includes(k)) score += 10;
+ });
+
+ // baseline aesthetic bonus
+ if (name.length < 25) score += 10;
+
+ let status = "GOOD";
+
+ if (score >= 80) status = "PERFECT_LUXURY";
+ else if (score >= 50) status = "WARN";
+ else status = "NOT_LUXURY";
+
+ return { score, status };
+}
+
+/* =========================
+   ADD PRODUCT WITH VALIDATION
 ========================= */
 app.post("/add-product", (req, res) => {
 
  const { name, link, image, niche } = req.body;
+
+ const luxuryCheck = checkLuxuryFit(name);
 
  const product = {
    id: Date.now(),
@@ -40,41 +58,51 @@ app.post("/add-product", (req, res) => {
    link: link || null,
    image: image || null,
    niche: niche || "aesthetic",
-   source: "USER"
+   source: "USER",
+   luxuryFit: luxuryCheck
  };
 
  userProducts.push(product);
 
+ let message = "Product added";
+
+ if (luxuryCheck.status === "WARN") {
+   message = "⚠️ Warning: borderline luxury fit";
+ }
+
+ if (luxuryCheck.status === "NOT_LUXURY") {
+   message = "❌ NOT LUXURY FIT - consider replacing product";
+ }
+
  res.json({
-   message: "Product added successfully",
-   product
+   message,
+   product,
+   suggestion:
+     luxuryCheck.status === "NOT_LUXURY"
+       ? "Replace with marble, gold, glass, or minimalist aesthetic product"
+       : "Good to use"
  });
 });
 
 /* =========================
-   SIMULATED BACKUP PRODUCTS
+   SIMULATED PRODUCTS
 ========================= */
 function generateSimulated() {
  return [
-   { name: "Gold Kitchen Organizer", niche: "kitchen", source: "SIM" },
-   { name: "Marble Soap Dispenser", niche: "home", source: "SIM" },
-   { name: "Luxury LED Mirror", niche: "bathroom", source: "SIM" },
-   { name: "Glass Spice Jar Set", niche: "kitchen", source: "SIM" }
+   { name: "Gold Kitchen Organizer", niche: "kitchen" },
+   { name: "Marble Soap Dispenser", niche: "home" },
+   { name: "Luxury LED Mirror", niche: "bathroom" }
  ];
 }
 
 /* =========================
-   PRODUCT SCORING ENGINE
+   SCORE ENGINE
 ========================= */
 function scoreProduct(p) {
-
  let score = 50;
 
  if (p.source === "USER") score += 25;
  if (p.niche === "aesthetic") score += 15;
-
- if (p.link) score += 10;
- if (p.image) score += 10;
 
  score += Math.floor(Math.random() * 30);
 
@@ -82,35 +110,7 @@ function scoreProduct(p) {
 }
 
 /* =========================
-   VIRAL PIN ENGINE
-========================= */
-function generateViralPin(product) {
-
- const titles = [
-   `I wish I knew this sooner 😳 ${product.name}`,
-   `Amazon find that looks EXPENSIVE but isn’t 💎`,
-   `Hidden luxury under $30 you NEED 🔥`,
-   `This is going viral in Pinterest USA 📌`,
-   `Affordable luxury upgrade ✨ ${product.name}`
- ];
-
- const title = titles[Math.floor(Math.random() * titles.length)];
-
- const description =
- `${product.name} is trending in USA Pinterest.
-Affordable Luxury aesthetic product with high viral potential.`;
-
- return {
-   title,
-   description,
-   hashtags: "#amazonfinds #affordableluxury #pinterestviral #homeaesthetic #viral",
-   image_prompt: `Luxury Pinterest aesthetic of ${product.name}, soft lighting, marble background, high-end ecommerce style`,
-   engagement_score: Math.floor(Math.random() * 40 + 60)
- };
-}
-
-/* =========================
-   SMART PRODUCT ENGINE
+   SMART PRODUCT PICKER
 ========================= */
 app.get("/smart-product", (req, res) => {
 
@@ -120,34 +120,41 @@ app.get("/smart-product", (req, res) => {
  let bestScore = 0;
 
  pool.forEach(p => {
+
+   const luxuryCheck = checkLuxuryFit(p.name);
    const s = scoreProduct(p);
-   if (s > bestScore) {
-     bestScore = s;
+
+   // penalize non-luxury items
+   let finalScore = s - (100 - luxuryCheck.score);
+
+   if (finalScore > bestScore) {
+     bestScore = finalScore;
      best = p;
    }
  });
 
- const viral = generateViralPin(best);
-
- const decision = bestScore > 75 ? "POST" : "HOLD";
+ const luxuryCheck = checkLuxuryFit(best.name);
 
  const pin = {
    product: best.name,
-   niche: best.niche,
    score: bestScore,
-   source: best.source || "SIM",
+   luxuryFit: luxuryCheck,
 
-   title: viral.title,
-   description: viral.description,
-   hashtags: viral.hashtags,
-   image_prompt: viral.image_prompt,
-   engagement_score: viral.engagement_score,
+   title: `Stop scrolling 😳 ${best.name}`,
+   description: `Affordable Luxury Pinterest Find`,
+   hashtags: "#amazonfinds #affordableluxury #pinterestviral",
 
-   decision,
-   best_time: "2 PM Ethiopia (US morning peak)"
+   warning:
+     luxuryCheck.status === "NOT_LUXURY"
+       ? "⚠️ This product is NOT aligned with your luxury niche"
+       : "OK",
+
+   decision: bestScore > 75 && luxuryCheck.score > 60 ? "POST" : "HOLD",
+
+   best_time: "2 PM Ethiopia"
  };
 
- if (decision === "POST") {
+ if (pin.decision === "POST") {
    pinQueue.push(pin);
  }
 
@@ -155,52 +162,25 @@ app.get("/smart-product", (req, res) => {
 });
 
 /* =========================
-   GENERATE FROM LINK
+   QUEUE
 ========================= */
-app.get("/generate-from-link", (req, res) => {
-
- const name = req.query.name || "Amazon Product";
- const link = req.query.link || "Amazon Link";
-
- const pin = {
-   id: Date.now(),
-   product: name,
-   link,
-   title: "Amazon Find You Didn’t Know You Needed 😍",
-   description: `${name} trending in USA Pinterest.`,
-   hashtags: "#amazonfinds #affordableluxury #viralproducts",
-   status: "QUEUED"
- };
-
- pinQueue.push(pin);
-
- res.json(pin);
-});
+app.get("/queue", (req, res) => res.json(pinQueue));
 
 /* =========================
-   QUEUE SYSTEM
+   POSTED
 ========================= */
-app.get("/queue", (req, res) => {
- res.json(pinQueue);
-});
+app.get("/posted", (req, res) => res.json(postedPins));
 
 /* =========================
-   POSTED SYSTEM
-========================= */
-app.get("/posted", (req, res) => {
- res.json(postedPins);
-});
-
-/* =========================
-   CLEAR QUEUE
+   CLEAR
 ========================= */
 app.get("/clear", (req, res) => {
  pinQueue.length = 0;
- res.json({ message: "queue cleared" });
+ res.json({ message: "cleared" });
 });
 
 /* =========================
-   AUTO POST ENGINE
+   AUTO POST
 ========================= */
 setInterval(() => {
 
@@ -217,10 +197,10 @@ setInterval(() => {
 }, 60000);
 
 /* =========================
-   START SERVER
+   START
 ========================= */
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
- console.log("🚀 PIN AI FACTORY v9 FULL SYSTEM LIVE");
+ console.log("🚀 PIN AI FACTORY v10 LUXURY GUARDIAN LIVE");
 });
