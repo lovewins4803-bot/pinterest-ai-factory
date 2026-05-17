@@ -4,7 +4,7 @@ const app = express();
 app.use(express.json());
 
 // ==============================
-// SMART PINTEREST AI ENGINE v2
+// PINTEREST BULK + AFFILIATE AI
 // ==============================
 
 function pick(arr) {
@@ -15,7 +15,13 @@ function cleanTag(text) {
   return text.replace(/\s/g, "").replace(/[^a-zA-Z0-9]/g, "");
 }
 
-// Main endpoint
+// Fake affiliate generator (safe placeholder system)
+function generateAffiliateLink(product) {
+  const base = "https://www.amazon.com/s?k=";
+  return base + encodeURIComponent(product);
+}
+
+// MAIN BULK ENGINE
 app.post("/generate-pin", (req, res) => {
   try {
     const { product } = req.body;
@@ -28,31 +34,33 @@ app.post("/generate-pin", (req, res) => {
       "This is going viral",
       "Everyone is saving this",
       "Stop scrolling now",
-      "Pinterest can’t stop sharing this",
-      "Hidden gem you need to see"
+      "Pinterest is obsessed with this",
+      "Hidden gem you need"
     ];
 
     const benefits = [
       "saves time instantly",
       "makes life easier",
-      "looks aesthetic and clean",
-      "budget-friendly solution",
-      "trending in 2026"
+      "looks aesthetic",
+      "is budget-friendly",
+      "is trending in 2026"
     ];
 
     const hook = pick(hooks);
     const benefit = pick(benefits);
 
-    const title = `🔥 ${hook}: ${product} That ${benefit}`;
+    const affiliate_link = generateAffiliateLink(product);
+
+    const baseTitle = `${hook}: ${product}`;
 
     const description = `
-${product} is one of the most trending ideas right now on Pinterest.
+${product} is trending fast on Pinterest.
 
 ✔ ${benefit}
-✔ Highly shareable
-✔ Perfect for daily use
+✔ Highly shareable idea
+✔ Used by thousands of people
 
-People are saving this fast — don’t miss the trend.
+Don’t miss this trending product.
 `;
 
     const hashtags = [
@@ -62,24 +70,24 @@ People are saving this fast — don’t miss the trend.
       "#trending",
       "#aesthetic",
       "#musthave",
-      "#lifehack"
+      "#amazonfinds"
     ].join(" ");
 
-    const overlay_text = `${hook.toUpperCase()}`;
+    const overlay_text = hook.toUpperCase();
 
-    // BONUS: multiple variations (for scaling Pinterest)
-    const variations = [
-      `${hook}: ${product}`,
-      `Why everyone is talking about ${product}`,
-      `${product} that is going viral`
-    ];
-
-    res.json({
-      title,
+    // 🔥 BULK VARIATIONS (CORE UPGRADE)
+    const pins = Array.from({ length: 5 }).map((_, i) => ({
+      title: `${baseTitle} (${i + 1})`,
       description,
       hashtags,
       overlay_text,
-      variations
+      affiliate_link
+    }));
+
+    res.json({
+      product,
+      affiliate_link,
+      pins
     });
 
   } catch (err) {
@@ -89,9 +97,9 @@ People are saving this fast — don’t miss the trend.
 
 // Health check
 app.get("/", (req, res) => {
-  res.send("Pinterest AI Factory v2 is LIVE 🚀");
+  res.send("Pinterest AI Factory v3 (BULK + AFFILIATE) is LIVE 🚀");
 });
 
-// Render fix
+// Render port fix
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("Server running on port", PORT));
