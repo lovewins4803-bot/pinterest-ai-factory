@@ -4,129 +4,168 @@ const app = express();
 app.use(express.json());
 
 /* =========================
-   PROFIT ENGINE
+   MEMORY (SIMULATED DB)
 ========================= */
 
-function detectCategory(product) {
-  const p = product.toLowerCase();
+let postQueue = [];
 
-  if (p.includes("course") || p.includes("ebook") || p.includes("software")) return "digital";
-  if (p.includes("phone") || p.includes("laptop") || p.includes("home") || p.includes("kitchen")) return "physical";
-  if (p.includes("deal") || p.includes("cheap") || p.includes("discount")) return "budget";
-  return "general";
-}
+/* =========================
+   PIN GENERATOR
+========================= */
 
-function buildLinks(product) {
-  const q = encodeURIComponent(product);
-
+function generatePin(product) {
   return {
-    amazon: `https://www.amazon.com/s?k=${q}`,
-    ebay: `https://www.ebay.com/sch/i.html?_nkw=${q}`,
-    cj: `https://www.cj.com/search?query=${q}`,
-    admitad: `https://www.admitad.com/search/?q=${q}`,
-    jvzoo: `https://www.jvzoo.com/content-search/${q}`
-  };
-}
-
-function score(network, category) {
-  const matrix = {
-    amazon: { digital: 3, physical: 9, budget: 8, general: 8 },
-    ebay: { digital: 4, physical: 7, budget: 9, general: 7 },
-    cj: { digital: 8, physical: 6, budget: 5, general: 7 },
-    admitad: { digital: 7, physical: 7, budget: 6, general: 7 },
-    jvzoo: { digital: 10, physical: 2, budget: 3, general: 6 }
-  };
-
-  return matrix[network][category] || 5;
-}
-
-function optimize(product) {
-  const category = detectCategory(product);
-  const links = buildLinks(product);
-
-  const scores = {};
-  Object.keys(links).forEach(net => {
-    scores[net] = score(net, category);
-  });
-
-  const bestNetwork = Object.keys(scores).reduce((a, b) =>
-    scores[a] > scores[b] ? a : b
-  );
-
-  return {
-    category,
-    bestNetwork,
-    bestLink: links[bestNetwork],
-    allLinks: links,
-    scores
+    title: `🔥 Viral ${product} You Need Today`,
+    description: `${product} is trending on Pinterest. Don’t miss this deal.`,
+    hashtags: "#viral #pinterest #amazonfinds #trending #affiliatemarketing",
+    overlay_text: "LIMITED TIME DEAL"
   };
 }
 
 /* =========================
-   API ENDPOINT
+   BOARD SYSTEM (SIMULATED)
 ========================= */
 
-app.post("/generate-pin", (req, res) => {
+const boards = [
+  "Kitchen Finds",
+  "Home Essentials",
+  "Amazon Must Haves",
+  "Trending Products",
+  "Affiliate Deals"
+];
+
+/* =========================
+   CREATE PIN (NO POST YET)
+========================= */
+
+app.post("/create-pin", (req, res) => {
   const { product } = req.body;
 
-  if (!product) {
-    return res.status(400).json({ error: "product required" });
-  }
+  if (!product) return res.status(400).json({ error: "product required" });
 
-  const optimizer = optimize(product);
-
-  const pin = {
-    title: `🔥 Viral ${product} You Must See`,
-    description: `${product} is trending right now. High converting affiliate product.`,
-    hashtags: "#viral #amazonfinds #affiliatemarketing #trending #pinterest",
-    overlay_text: "DON'T MISS THIS DEAL"
-  };
+  const pin = generatePin(product);
 
   res.json({
     product,
     pin,
-    profit_engine: optimizer
+    boards
   });
 });
 
 /* =========================
-   DASHBOARD UI (NEW)
+   SCHEDULE POST (QUEUE SYSTEM)
+========================= */
+
+app.post("/schedule-post", (req, res) => {
+  const { product, board } = req.body;
+
+  if (!product || !board) {
+    return res.status(400).json({ error: "product + board required" });
+  }
+
+  const pin = generatePin(product);
+
+  const task = {
+    id: Date.now(),
+    product,
+    board,
+    pin,
+    status: "queued"
+  };
+
+  postQueue.push(task);
+
+  res.json({
+    message: "POST SCHEDULED",
+    task
+  });
+});
+
+/* =========================
+   AUTO PROCESSOR (SIMULATED POSTER)
+========================= */
+
+function processQueue() {
+  postQueue = postQueue.map(task => {
+    if (task.status === "queued") {
+      return {
+        ...task,
+        status: "posted",
+        postedAt: new Date().toISOString()
+      };
+    }
+    return task;
+  });
+}
+
+// auto run every 10 seconds
+setInterval(processQueue, 10000);
+
+/* =========================
+   DASHBOARD UI
 ========================= */
 
 app.get("/", (req, res) => {
   res.send(`
   <html>
   <head>
-    <title>Pinterest AI Factory Dashboard</title>
+    <title>Auto Poster SaaS</title>
     <style>
       body { font-family: Arial; background:#0f172a; color:white; padding:20px; }
-      input, button { padding:10px; width:300px; margin:5px; }
-      button { cursor:pointer; background:#22c55e; border:none; color:white; }
-      pre { background:#1e293b; padding:10px; overflow:auto; }
+      input, select, button { padding:10px; margin:5px; width:300px; }
+      button { background:#22c55e; color:white; border:none; cursor:pointer; }
+      pre { background:#1e293b; padding:10px; }
     </style>
   </head>
 
   <body>
-    <h1>🚀 Pinterest AI Factory Dashboard</h1>
+    <h1>🚀 AUTO POSTER SAAS DASHBOARD</h1>
 
-    <input id="product" placeholder="Enter product e.g kitchen organizer" />
-    <button onclick="testAPI()">Generate</button>
+    <h3>Create Pin</h3>
+    <input id="product" placeholder="Enter product" />
+    <button onclick="createPin()">Generate Pin</button>
 
-    <h3>Output:</h3>
-    <pre id="output">Waiting...</pre>
+    <h3>Schedule Post</h3>
+    <select id="board">
+      ${boards.map(b => `<option>${b}</option>`).join("")}
+    </select>
+
+    <button onclick="schedule()">Schedule Post</button>
+
+    <h3>Output</h3>
+    <pre id="out">Waiting...</pre>
 
     <script>
-      async function testAPI() {
-        const product = document.getElementById('product').value;
+      let lastProduct = "";
 
-        const res = await fetch('/generate-pin', {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
+      async function createPin() {
+        const product = document.getElementById("product").value;
+        lastProduct = product;
+
+        const res = await fetch("/create-pin", {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
           body: JSON.stringify({ product })
         });
 
         const data = await res.json();
-        document.getElementById('output').innerText = JSON.stringify(data, null, 2);
+        document.getElementById("out").innerText = JSON.stringify(data, null, 2);
+      }
+
+      async function schedule() {
+        const board = document.getElementById("board").value;
+
+        const res = await fetch("/schedule-post", {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({
+            product: lastProduct,
+            board
+          })
+        });
+
+        const data = await res.json();
+        document.getElementById("out").innerText = JSON.stringify(data, null, 2);
       }
     </script>
   </body>
@@ -135,5 +174,5 @@ app.get("/", (req, res) => {
 });
 
 app.listen(3000, () => {
-  console.log("SAAS DASHBOARD RUNNING ON PORT 3000");
+  console.log("AUTO POSTER SAAS RUNNING");
 });
