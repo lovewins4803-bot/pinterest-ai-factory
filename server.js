@@ -1,101 +1,105 @@
 const express = require("express");
-const cors = require("cors");
-
 const app = express();
-app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
-app.get("/", (req,res)=>{
-  res.send("Pinterest AI Factory Running 🚀");
-});
+// -----------------------------
+// TREND + AFFILIATE BRAIN
+// -----------------------------
 
+const products = [
+  "Sink Organizer",
+  "Vegetable Chopper",
+  "Air Fryer Rack",
+  "Closet Organizer",
+  "Under Sink Storage",
+  "Silicone Kitchen Set",
+  "Shower Caddy"
+];
 
-// 🧠 SMART WORD POOLS (ANTI DUPLICATE ENGINE)
-const powerWords = [
-  "Must-Have","Viral","Trending","Amazon Favorite","Top Rated",
-  "Genius","Game Changing","Life Changing","Customer Favorite"
+const hooks = [
+  "🔥 Trending on Amazon right now",
+  "💡 Everyone is buying this",
+  "🚀 Viral TikTok + Pinterest product",
+  "⚡ Hidden Amazon gem",
+  "🎯 Best home upgrade this week"
 ];
 
 const angles = [
-  "Gift idea",
   "Problem solver",
-  "Luxury aesthetic",
-  "Kitchen upgrade",
-  "Small space hack",
-  "Organization hack"
+  "Home upgrade",
+  "Gift idea",
+  "Kitchen hack",
+  "Organization boost"
 ];
 
-const niches = [
-  "kitchen gadgets",
-  "home organization",
-  "amazon finds",
-  "cleaning hacks",
-  "small apartment living"
+const hashtags = [
+  "#amazonfinds #viral #pinterest #homehacks",
+  "#kitchenhacks #amazonmusthaves #trending",
+  "#homeorganization #lifehacks #musthave",
+  "#viralproducts #amazonfinds #cleanhome"
 ];
 
-const hashtagsPool = [
-  "#amazonfinds","#viralproducts","#pinterestfinds",
-  "#homeorganization","#kitchengadgets","#musthave",
-  "#lifehacks","#cleanhome","#smallspaces"
-];
+// -----------------------------
+// TIME ENGINE (USA → ETHIOPIA)
+// -----------------------------
 
-function random(arr){
-  return arr[Math.floor(Math.random()*arr.length)];
-}
-
-// 🧠 BEST POSTING TIME ENGINE (USA TIME → Ethiopia Time)
-function bestTimeSuggestion(){
+function getBestTime() {
   const times = [
-    "4:00 PM Ethiopia (8 AM EST)",
-    "7:00 PM Ethiopia (11 AM EST)",
-    "1:00 AM Ethiopia (7 PM EST BEST)",
-    "3:00 AM Ethiopia (9 PM EST)"
+    "2:00 PM Ethiopia (8 AM USA peak)",
+    "8:00 PM Ethiopia (2 PM USA peak)",
+    "3:00 AM Ethiopia (9 PM USA peak)"
   ];
-  return random(times);
+  return times[Math.floor(Math.random() * times.length)];
 }
 
+// -----------------------------
+// DAILY AFFILIATE BRAIN
+// -----------------------------
 
-// 🧠 PIN GENERATOR
-function generatePin(product){
-
-  const power = random(powerWords);
-  const niche = random(niches);
-  const angle = random(angles);
-  const time = bestTimeSuggestion();
+function generateDailyPlan() {
+  const product = products[Math.floor(Math.random() * products.length)];
+  const hook = hooks[Math.floor(Math.random() * hooks.length)];
+  const angle = angles[Math.floor(Math.random() * angles.length)];
+  const hashtag = hashtags[Math.floor(Math.random() * hashtags.length)];
 
   return {
+    today_action: "POST THIS",
     product: product,
-    title: `🔥 ${power}: ${product} Everyone Is Buying`,
-    description:
-      `${product} is blowing up on Pinterest right now.
-Perfect for ${niche}. Pinterest users are saving this daily.
-Get yours before it goes viral.`,
-    hashtags: hashtagsPool.sort(()=>0.5-Math.random()).slice(0,5).join(" "),
-    overlay: `${power.toUpperCase()} ${product.toUpperCase()}`,
-    angle: angle,
-    best_post_time: time
+    title: `${hook}: ${product}`,
+    description: `${product} is trending and performing well on Amazon and Pinterest.\nPerfect for ${angle}.`,
+    hashtags: hashtag,
+    pin_style: angle,
+    best_post_time: getBestTime(),
+    recommendation_score: Math.floor(Math.random() * 40) + 60,
+    affiliate_tip: "Use urgency words like: limited, trending, viral",
+    decision: "POST NOW"
   };
 }
 
+// -----------------------------
+// API ROUTES
+// -----------------------------
 
-// 🔥 SINGLE PIN ROUTE
-app.post("/generate-pin", (req,res)=>{
-  try{
-    const { product } = req.body;
-    const pin = generatePin(product);
-    res.json(pin);
-  }catch(err){
-    res.status(500).json({error:err.message});
-  }
+app.get("/", (req,res)=>{
+  res.send("Affiliate Brain System Running 🚀");
 });
 
+// DAILY PLAN (MAIN FEATURE)
+app.get("/daily-plan", (req,res)=>{
+  res.json(generateDailyPlan());
+});
 
-// 🔥 BULK PIN ROUTE (TAILWIND STYLE)
-app.post("/generate-bulk-pins", (req,res)=>{
-  try{
-    const { products } = req.body;
+// MULTI PLAN (3 POSTS A DAY)
+app.get("/weekly-plan", (req,res)=>{
+  const plan = [];
+  for(let i=0;i<3;i++){
+    plan.push(generateDailyPlan());
+  }
+  res.json(plan);
+});
 
-    if(!products || !Array.isArray(products)){
-      return res.status(400).json({error:"Send
+app.listen(PORT, ()=>{
+  console.log("Affiliate Brain running on port", PORT);
+});
