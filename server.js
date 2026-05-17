@@ -4,10 +4,27 @@ const app = express();
 app.use(express.json());
 
 /* =========================
-   MEMORY (SIMULATED DB)
+   SIMPLE "DATABASE"
 ========================= */
 
-let postQueue = [];
+let users = {};
+let campaigns = [];
+
+/* =========================
+   AFFILIATE ENGINE
+========================= */
+
+function buildAffiliateLinks(product) {
+  const q = encodeURIComponent(product);
+
+  return {
+    amazon: `https://www.amazon.com/s?k=${q}`,
+    ebay: `https://www.ebay.com/sch/i.html?_nkw=${q}`,
+    cj: `https://www.cj.com/search?query=${q}`,
+    admitad: `https://www.admitad.com/search/?q=${q}`,
+    jvzoo: `https://www.jvzoo.com/content-search/${q}`
+  };
+}
 
 /* =========================
    PIN GENERATOR
@@ -15,153 +32,156 @@ let postQueue = [];
 
 function generatePin(product) {
   return {
-    title: `🔥 Viral ${product} You Need Today`,
-    description: `${product} is trending on Pinterest. Don’t miss this deal.`,
-    hashtags: "#viral #pinterest #amazonfinds #trending #affiliatemarketing",
+    title: `🔥 Viral ${product} You Need Now`,
+    description: `${product} is trending across Pinterest and affiliate networks.`,
+    hashtags: "#viral #pinterest #affiliate #amazonfinds #trending",
     overlay_text: "LIMITED TIME DEAL"
   };
 }
 
 /* =========================
-   BOARD SYSTEM (SIMULATED)
+   USER SYSTEM (SIMULATED LOGIN)
 ========================= */
 
-const boards = [
-  "Kitchen Finds",
-  "Home Essentials",
-  "Amazon Must Haves",
-  "Trending Products",
-  "Affiliate Deals"
-];
+app.post("/login", (req, res) => {
+  const { userId } = req.body;
 
-/* =========================
-   CREATE PIN (NO POST YET)
-========================= */
+  if (!userId) return res.status(400).json({ error: "userId required" });
 
-app.post("/create-pin", (req, res) => {
-  const { product } = req.body;
+  if (!users[userId]) {
+    users[userId] = {
+      id: userId,
+      earnings: 0,
+      clicks: 0
+    };
+  }
 
-  if (!product) return res.status(400).json({ error: "product required" });
-
-  const pin = generatePin(product);
-
-  res.json({
-    product,
-    pin,
-    boards
-  });
+  res.json(users[userId]);
 });
 
 /* =========================
-   SCHEDULE POST (QUEUE SYSTEM)
+   CREATE CAMPAIGN
 ========================= */
 
-app.post("/schedule-post", (req, res) => {
-  const { product, board } = req.body;
+app.post("/create-campaign", (req, res) => {
+  const { userId, product } = req.body;
 
-  if (!product || !board) {
-    return res.status(400).json({ error: "product + board required" });
+  if (!userId || !product) {
+    return res.status(400).json({ error: "userId + product required" });
   }
 
   const pin = generatePin(product);
+  const links = buildAffiliateLinks(product);
 
-  const task = {
+  const campaign = {
     id: Date.now(),
+    userId,
     product,
-    board,
     pin,
-    status: "queued"
+    links,
+    clicks: 0,
+    earnings: 0,
+    createdAt: new Date().toISOString()
   };
 
-  postQueue.push(task);
+  campaigns.push(campaign);
 
   res.json({
-    message: "POST SCHEDULED",
-    task
+    message: "CAMPAIGN CREATED",
+    campaign
   });
 });
 
 /* =========================
-   AUTO PROCESSOR (SIMULATED POSTER)
+   TRACK CLICK (SIMULATED PROFIT)
 ========================= */
 
-function processQueue() {
-  postQueue = postQueue.map(task => {
-    if (task.status === "queued") {
-      return {
-        ...task,
-        status: "posted",
-        postedAt: new Date().toISOString()
-      };
-    }
-    return task;
-  });
-}
+app.post("/click", (req, res) => {
+  const { campaignId, network } = req.body;
 
-// auto run every 10 seconds
-setInterval(processQueue, 10000);
+  const campaign = campaigns.find(c => c.id === campaignId);
+
+  if (!campaign) return res.status(404).json({ error: "not found" });
+
+  campaign.clicks += 1;
+
+  let profit = 0;
+
+  if (network === "amazon") profit = 0.5;
+  if (network === "ebay") profit = 0.7;
+  if (network === "cj") profit = 1.2;
+  if (network === "admitad") profit = 1.0;
+  if (network === "jvzoo") profit = 2.5;
+
+  campaign.earnings += profit;
+
+  if (users[campaign.userId]) {
+    users[campaign.userId].clicks += 1;
+    users[campaign.userId].earnings += profit;
+  }
+
+  res.json({
+    message: "CLICK TRACKED",
+    profit,
+    campaign
+  });
+});
 
 /* =========================
-   DASHBOARD UI
+   DASHBOARD
 ========================= */
 
 app.get("/", (req, res) => {
   res.send(`
   <html>
   <head>
-    <title>Auto Poster SaaS</title>
+    <title>SAAS PROFIT DASHBOARD</title>
     <style>
       body { font-family: Arial; background:#0f172a; color:white; padding:20px; }
-      input, select, button { padding:10px; margin:5px; width:300px; }
-      button { background:#22c55e; color:white; border:none; cursor:pointer; }
+      input, button { padding:10px; width:300px; margin:5px; }
+      button { background:#22c55e; border:none; color:white; cursor:pointer; }
       pre { background:#1e293b; padding:10px; }
     </style>
   </head>
 
   <body>
-    <h1>🚀 AUTO POSTER SAAS DASHBOARD</h1>
+    <h1>🚀 SAAS PROFIT ENGINE</h1>
 
-    <h3>Create Pin</h3>
-    <input id="product" placeholder="Enter product" />
-    <button onclick="createPin()">Generate Pin</button>
+    <h3>Login</h3>
+    <input id="userId" placeholder="Enter user ID" />
+    <button onclick="login()">Login</button>
 
-    <h3>Schedule Post</h3>
-    <select id="board">
-      ${boards.map(b => `<option>${b}</option>`).join("")}
-    </select>
-
-    <button onclick="schedule()">Schedule Post</button>
+    <h3>Create Campaign</h3>
+    <input id="product" placeholder="Product name" />
+    <button onclick="create()">Create Campaign</button>
 
     <h3>Output</h3>
     <pre id="out">Waiting...</pre>
 
     <script>
-      let lastProduct = "";
+      let userIdGlobal = "";
 
-      async function createPin() {
-        const product = document.getElementById("product").value;
-        lastProduct = product;
+      async function login() {
+        const userId = document.getElementById("userId").value;
+        userIdGlobal = userId;
 
-        const res = await fetch("/create-pin", {
-          method: "POST",
-          headers: {"Content-Type":"application/json"},
-          body: JSON.stringify({ product })
+        const res = await fetch("/login", {
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify({ userId })
         });
 
         const data = await res.json();
         document.getElementById("out").innerText = JSON.stringify(data, null, 2);
       }
 
-      async function schedule() {
-        const board = document.getElementById("board").value;
+      async function create() {
+        const product = document.getElementById("product").value;
 
-        const res = await fetch("/schedule-post", {
-          method: "POST",
-          headers: {"Content-Type":"application/json"},
-          body: JSON.stringify({
-            product: lastProduct,
-            board
-          })
+        const res = await fetch("/create-campaign", {
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify({ userId: userIdGlobal, product })
         });
 
         const data = await res.json();
@@ -174,5 +194,5 @@ app.get("/", (req, res) => {
 });
 
 app.listen(3000, () => {
-  console.log("AUTO POSTER SAAS RUNNING");
+  console.log("SAAS PROFIT ENGINE V1 RUNNING");
 });
