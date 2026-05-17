@@ -1,0 +1,43 @@
+import express from "express";
+import fetch from "node-fetch";
+
+const app = express();
+app.use(express.json());
+
+app.post("/generate-pin", async (req, res) => {
+  try {
+    const { product } = req.body;
+
+    const prompt = `
+    Create a viral Pinterest pin package for this product:
+    ${product}
+
+    Return JSON with:
+    title
+    description
+    hashtags
+    overlay_text
+    `;
+
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+      })
+    });
+
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/", (req,res)=>res.send("Pinterest AI Factory running"));
+
+app.listen(3000, () => console.log("Server running"));
