@@ -4,15 +4,26 @@ const app = express();
 app.use(express.json());
 
 /* =========================
-   MEMORY (PIN QUEUE)
+   MEMORY STORAGE
 ========================= */
 let pinQueue = [];
+let postedPins = [];
 
 /* =========================
-   HOME ROUTE
+   HOME
 ========================= */
 app.get("/", (req, res) => {
   res.send("PIN AI FACTORY v2 RUNNING 🚀");
+});
+
+/* =========================
+   HEALTH CHECK
+========================= */
+app.get("/health", (req, res) => {
+  res.json({
+    status: "ok",
+    service: "PIN AI FACTORY v2"
+  });
 });
 
 /* =========================
@@ -46,9 +57,7 @@ app.get("/daily-plan", (req, res) => {
   const title = titles[Math.floor(Math.random() * titles.length)];
 
   const hashtags = "#amazonfinds #viral #pinterest #usa #affiliatemarketing";
-
   const best_time = "2 PM Ethiopia (US morning peak)";
-
   const decision = score >= 70 ? "POST" : "SKIP";
 
   res.json({
@@ -56,61 +65,3 @@ app.get("/daily-plan", (req, res) => {
     niche: pick.niche,
     title,
     hashtags,
-    best_time,
-    decision,
-    score,
-    system: "PIN AI FACTORY v2"
-  });
-});
-
-/* =========================
-   GENERATE PIN → QUEUE SYSTEM
-========================= */
-app.get("/generate-pin", (req, res) => {
-
-  const pin = {
-    id: Date.now(),
-    product: "Air Fryer Rack",
-    title: "I wish I knew this sooner 😳 Air Fryer Rack",
-    status: "QUEUED",
-    createdAt: new Date().toISOString()
-  };
-
-  pinQueue.push(pin);
-
-  res.json({
-    message: "Pin successfully added to queue",
-    pin,
-    queueSize: pinQueue.length
-  });
-
-});
-
-/* =========================
-   VIEW QUEUE
-========================= */
-app.get("/queue", (req, res) => {
-  res.json({
-    total: pinQueue.length,
-    pins: pinQueue
-  });
-});
-
-/* =========================
-   HEALTH CHECK (RENDER)
-========================= */
-app.get("/health", (req, res) => {
-  res.json({
-    status: "ok",
-    service: "PIN AI FACTORY v2"
-  });
-});
-
-/* =========================
-   START SERVER
-========================= */
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log(`Pin AI Factory running on port ${PORT}`);
-});
