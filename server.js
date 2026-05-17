@@ -1,6 +1,5 @@
 const express = require("express");
 const app = express();
-
 app.use(express.json());
 
 /* =========================
@@ -10,143 +9,151 @@ let pinQueue = [];
 let postedPins = [];
 
 /* =========================
-   HOME
+   HOME DASHBOARD
 ========================= */
 app.get("/", (req, res) => {
-res.send("PIN AI FACTORY RUNNING");
+res.send(`
+<h1>PIN AI FACTORY v5 – Luxury Engine 💎</h1>
+<p>System running.</p>
+<ul>
+<li>/smart-product</li>
+<li>/generate-from-link?name=Sink Organizer&link=https://amazon.com</li>
+<li>/queue</li>
+<li>/posted</li>
+</ul>
+`);
 });
 
 /* =========================
-   HEALTH
+   HEALTH CHECK
 ========================= */
-app.get("/health", (req, res) => {
-  res.json({ status: "ok", version: "v5-fixed" });
+app.get("/health",(req,res)=>{
+res.json({status:"running v5 luxury engine"});
 });
 
 /* =========================
-   GENERATE BASIC PIN
+   LUXURY PRODUCT DATABASE
+   (Simulated Amazon Intelligence)
 ========================= */
-app.get("/generate-pin", (req, res) => {
-
-  const pin = {
-    id: Date.now(),
-    product: "Auto Product",
-    status: "QUEUED",
-    createdAt: new Date().toISOString()
-  };
-
-  pinQueue.push(pin);
-
-  res.json({
-    message: "queued",
-    pin,
-    queueSize: pinQueue.length
-  });
-
-});
+const luxuryProducts = [
+ {name:"Gold Kitchen Faucet", niche:"kitchen", demand:10, price:"$$"},
+ {name:"Marble Soap Dispenser", niche:"home", demand:9, price:"$"},
+ {name:"Velvet Jewelry Organizer", niche:"aesthetic", demand:9, price:"$"},
+ {name:"Minimalist LED Desk Lamp", niche:"aesthetic", demand:10, price:"$$"},
+ {name:"Glass Spice Jars Set", niche:"kitchen", demand:9, price:"$"},
+ {name:"Luxury Shower Shelf", niche:"bathroom", demand:10, price:"$"},
+ {name:"Modern Bedside Lamp", niche:"bedroom", demand:8, price:"$"},
+ {name:"Acrylic Makeup Organizer", niche:"beauty", demand:9, price:"$"},
+ {name:"Gold Cutlery Set", niche:"kitchen", demand:10, price:"$$"},
+ {name:"Smart Motion Sensor Light", niche:"home", demand:9, price:"$"}
+];
 
 /* =========================
-   GENERATE FROM IMAGE
+   TREND ANALYZER
 ========================= */
-app.get("/generate-from-image", (req,res)=>{
+function analyzeTrend(product){
+ let score = 60;
 
-const pin = {
- id: Date.now(),
- product: "Image Based Product",
- title: "Stop scrolling 😍 You need this!",
- description: "This viral Pinterest product is trending in the USA right now.",
- hashtags: "#pinteresttrends #amazonfinds #viral",
- best_time: "2 PM Ethiopia (US morning peak)",
- status: "QUEUED",
- createdAt: new Date()
-};
+ if(product.niche==="kitchen") score+=10;
+ if(product.niche==="aesthetic") score+=15;
+ if(product.price==="$") score+=10;
+ score+=product.demand*2;
+ score+=Math.floor(Math.random()*10);
 
-pinQueue.push(pin);
+ let label="GOOD";
+ if(score>80) label="HOT";
+ if(score>90) label="VIRAL";
 
-res.json({
- message:"Image pin generated",
- pin,
- queueSize: pinQueue.length
-});
+ return {score,label};
+}
 
+/* =========================
+   SMART PRODUCT PICKER
+========================= */
+app.get("/smart-product",(req,res)=>{
+
+ const pick = luxuryProducts[Math.floor(Math.random()*luxuryProducts.length)];
+ const trend = analyzeTrend(pick);
+
+ const decision = trend.score>75 ? "POST" : "HOLD";
+
+ const pin = {
+   id: Date.now(),
+   product: pick.name,
+   niche: pick.niche,
+   title: `Stop scrolling 😍 ${pick.name}`,
+   description: `${pick.name} is going viral in USA Pinterest right now.`,
+   hashtags:"#amazonfinds #luxuryfinds #pinterestviral #affiliatemarketing",
+   best_time:"2 PM Ethiopia (US morning peak)",
+   trend_score:trend.score,
+   trend_label:trend.label,
+   decision
+ };
+
+ if(decision==="POST"){
+   pinQueue.push(pin);
+ }
+
+ res.json(pin);
 });
 
 /* =========================
    GENERATE FROM AMAZON LINK
 ========================= */
-app.get("/generate-from-link", (req,res)=>{
+app.get("/generate-from-link",(req,res)=>{
 
-const productLink = req.query.link || "Amazon Product";
-const productName = req.query.name || "Amazon Product";
+ const name = req.query.name || "Amazon Product";
+ const link = req.query.link || "Amazon Link";
 
-const pin = {
- id: Date.now(),
- product: productName,
- link: productLink,
- title: "Amazon Find You Didn’t Know You Needed 😍",
- description: productName + " is trending on Pinterest USA right now.",
- hashtags: "#amazonfinds #pinteresttrends #viralproducts",
- best_time: "3 AM Ethiopia (US night peak)",
- image_source: "Amazon product image (auto)",
- status: "QUEUED",
- createdAt: new Date()
-};
+ const pin = {
+   id: Date.now(),
+   product:name,
+   link,
+   title:`Amazon Find You Didn’t Know You Needed 😍`,
+   description:`${name} is trending on Pinterest USA right now.`,
+   hashtags:"#amazonfinds #luxuryfinds #viralproducts",
+   best_time:"3 AM Ethiopia (US night peak)",
+   status:"QUEUED",
+   createdAt:new Date()
+ };
 
-pinQueue.push(pin);
-
-res.json({
- message:"Amazon link processed",
- pin,
- queueSize: pinQueue.length
-});
-
+ pinQueue.push(pin);
+ res.json({message:"Amazon product queued",pin});
 });
 
 /* =========================
    QUEUE VIEW
 ========================= */
-app.get("/queue", (req, res) => {
-  res.json({ total: pinQueue.length, pins: pinQueue });
+app.get("/queue",(req,res)=>{
+ res.json({total:pinQueue.length,pins:pinQueue});
 });
 
 /* =========================
-   POSTED VIEW
+   POSTED PINS
 ========================= */
-app.get("/posted", (req, res) => {
-  res.json({ total: postedPins.length, pins: postedPins });
+app.get("/posted",(req,res)=>{
+ res.json({total:postedPins.length,pins:postedPins});
 });
 
 /* =========================
-   CLEAR QUEUE
+   AUTO POST SIMULATOR
 ========================= */
-app.get("/clear", (req,res)=>{
-pinQueue.length = 0;
-res.json({message:"queue cleared"});
-});
+setInterval(()=>{
+ if(pinQueue.length===0) return;
+
+ const pin = pinQueue.shift();
+ pin.status="POSTED";
+ pin.postedAt=new Date();
+ postedPins.push(pin);
+
+ console.log("AUTO POSTED:",pin.product);
+
+},60000);
 
 /* =========================
-   AUTO SCHEDULER
-========================= */
-setInterval(() => {
-
-  if (pinQueue.length === 0) return;
-
-  const pin = pinQueue.shift();
-
-  pin.status = "POSTED";
-  pin.postedAt = new Date().toISOString();
-
-  postedPins.push(pin);
-
-  console.log("POSTED:", pin.id);
-
-}, 60000);
-
-/* =========================
-   START SERVER (LAST!)
+   START SERVER
 ========================= */
 const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log(`PIN AI FACTORY running on port ${PORT}`);
+app.listen(PORT,()=>{
+ console.log("PIN AI FACTORY v5 RUNNING 🚀");
 });
