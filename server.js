@@ -7,12 +7,16 @@ let pinQueue = [];
 let postedPins = [];
 let userProducts = [];
 let performanceDB = {};
-let bannedProducts = new Set();
+let dailyStats = {
+ totalEarnings:0,
+ totalPosts:0,
+ totalClicks:0
+};
 
 /* =========================
-   VIRAL SCORING
+   VIRAL ENGINE
 ========================= */
-function viralScore(name){
+function scoreProduct(name){
 
  let score = 50;
 
@@ -30,9 +34,9 @@ function viralScore(name){
 }
 
 /* =========================
-   MONEY ESTIMATION
+   MONEY MODEL
 ========================= */
-function estimateMoney(score){
+function moneyModel(score){
 
  const ctr = Math.min(95, score * 0.8);
  const save = Math.min(95, score * 0.7);
@@ -40,11 +44,16 @@ function estimateMoney(score){
 
  const earnings = (ctr + save + viral)/3/10;
 
- return {ctr,save,viral,earnings};
+ return {
+   ctr,
+   save,
+   viral,
+   earnings: parseFloat(earnings.toFixed(2))
+ };
 }
 
 /* =========================
-   LEARNING ENGINE
+   LEARNING SYSTEM
 ========================= */
 function learn(pin, result){
 
@@ -53,9 +62,10 @@ function learn(pin, result){
  if(!performanceDB[name]){
    performanceDB[name] = {
      posts:0,
-     totalScore:0,
      wins:0,
-     losses:0
+     losses:0,
+     totalScore:0,
+     earnings:0
    };
  }
 
@@ -64,13 +74,16 @@ function learn(pin, result){
  p.posts++;
  p.totalScore += pin.score;
 
- if(result === "WIN") p.wins++;
- else p.losses++;
-
+ if(result === "WIN"){
+   p.wins++;
+   p.earnings += pin.earnings;
+ } else {
+   p.losses++;
+ }
 }
 
 /* =========================
-   SMART PRODUCT PICKER
+   SMART PICKER
 ========================= */
 app.get("/smart-product",(req,res)=>{
 
@@ -86,11 +99,8 @@ app.get("/smart-product",(req,res)=>{
 
  pool.forEach(p=>{
 
-   if(bannedProducts.has(p.name)) return;
+   let score = scoreProduct(p.name);
 
-   let score = viralScore(p.name);
-
-   // learning boost
    if(performanceDB[p.name]){
      score += performanceDB[p.name].wins * 5;
    }
@@ -101,55 +111,61 @@ app.get("/smart-product",(req,res)=>{
    }
  });
 
- const money = estimateMoney(bestScore);
+ const money = moneyModel(bestScore);
 
  const pin = {
    product: best.name,
    score: bestScore,
    ...money,
    decision: bestScore > 70 ? "POST" : "HOLD",
-   best_time: "2 PM Ethiopia"
+   createdAt: new Date()
  };
 
  if(pin.decision === "POST"){
    pinQueue.push(pin);
  }
 
+ dailyStats.totalPosts++;
+ dailyStats.totalEarnings += money.earnings;
+
  res.json(pin);
 });
 
 /* =========================
-   ADD PRODUCT
+   BATCH GENERATOR
 ========================= */
-app.post("/add-product",(req,res)=>{
+app.get("/generate-batch",(req,res)=>{
 
- const {name} = req.body;
+ let batch = [];
 
- userProducts.push({name});
+ for(let i=0;i<5;i++){
 
- res.json({message:"added",name});
-});
+   const pool = userProducts.length ? userProducts : [
+     {name:"Gold Kitchen Organizer"},
+     {name:"Marble Soap Dispenser"},
+     {name:"Luxury LED Mirror"}
+   ];
 
-/* =========================
-   REPORT RESULT (LEARNING LOOP)
-========================= */
-app.post("/report",(req,res)=>{
+   const p = pool[Math.floor(Math.random()*pool.length)];
+   const score = scoreProduct(p.name);
+   const money = moneyModel(score);
 
- const {product,result} = req.body;
+   batch.push({
+     product:p.name,
+     score,
+     ...money,
+     decision: score > 70 ? "POST" : "HOLD"
+   });
 
- learn({product,score:viralScore(product)},result);
-
- if(result === "LOSS"){
-   bannedProducts.add(product);
  }
 
- res.json({message:"learned",product,result});
+ res.json(batch);
 });
 
 /* =========================
-   WINNER DASHBOARD
+   DASHBOARD (PROFIT VIEW)
 ========================= */
-app.get("/winner",(req,res)=>{
+app.get("/dashboard",(req,res)=>{
 
  let best = null;
  let bestE = 0;
@@ -157,23 +173,37 @@ app.get("/winner",(req,res)=>{
  Object.keys(performanceDB).forEach(k=>{
 
    const p = performanceDB[k];
+   const avg = p.earnings;
 
-   const avg = p.totalScore / p.posts;
-
-   const est = avg + p.wins*10;
-
-   if(est > bestE){
-     bestE = est;
+   if(avg > bestE){
+     bestE = avg;
      best = k;
    }
 
  });
 
  res.json({
+   dailyStats,
    best_product: best,
-   score: bestE,
-   reason: "Self-learning affiliate optimization system"
+   best_earnings: bestE,
+   total_products_tracked: Object.keys(performanceDB).length
  });
+});
+
+/* =========================
+   REPORT SYSTEM
+========================= */
+app.post("/report",(req,res)=>{
+
+ const {product,result,earnings} = req.body;
+
+ learn({product,score:scoreProduct(product),earnings},result);
+
+ if(result === "WIN"){
+   dailyStats.totalClicks += 1;
+ }
+
+ res.json({message:"updated"});
 });
 
 /* =========================
@@ -200,5 +230,5 @@ setInterval(()=>{
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT,()=>{
- console.log("🚀 PIN AI FACTORY v14 AUTOPILOT LIVE");
+ console.log("🚀 PIN AI FACTORY v15 MONEY AUTOMATION LIVE");
 });
