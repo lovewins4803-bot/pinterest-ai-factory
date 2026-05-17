@@ -2,166 +2,164 @@ const express = require("express");
 const app = express();
 app.use(express.json());
 
+/* =========================
+   MEMORY SYSTEM
+========================= */
 let pinQueue = [];
 let postedPins = [];
 
 /* =========================
-   AFFORDABLE LUXURY AMAZON DB
+   LIVE PRODUCT FEED (SIMULATED REAL MARKET)
+   This behaves like Amazon/CJ affiliate API feed
 ========================= */
 
-const amazonDB = [
-{
- name:"Gold Kitchen Faucet",
- niche:"kitchen",
- price:39,
- rating:4.8,
- reviews:12450,
- boughtLastMonth:5000,
- bestSellerRank:12,
- trendGrowth:92
-},
-{
- name:"Marble Soap Dispenser",
- niche:"home",
- price:18,
- rating:4.7,
- reviews:8450,
- boughtLastMonth:3200,
- bestSellerRank:25,
- trendGrowth:88
-},
-{
- name:"Glass Spice Jars Set",
- niche:"kitchen",
- price:24,
- rating:4.9,
- reviews:22100,
- boughtLastMonth:7200,
- bestSellerRank:6,
- trendGrowth:95
-},
-{
- name:"Luxury Shower Shelf",
- niche:"bathroom",
- price:22,
- rating:4.6,
- reviews:5300,
- boughtLastMonth:2800,
- bestSellerRank:41,
- trendGrowth:80
-},
-{
- name:"Velvet Jewelry Organizer",
- niche:"aesthetic",
- price:19,
- rating:4.8,
- reviews:9100,
- boughtLastMonth:4300,
- bestSellerRank:18,
- trendGrowth:90
-},
-{
- name:"Acrylic Makeup Organizer",
- niche:"beauty",
- price:21,
- rating:4.7,
- reviews:15000,
- boughtLastMonth:6100,
- bestSellerRank:10,
- trendGrowth:93
-}
-];
+function generateLiveFeed() {
+  const niches = ["kitchen", "home", "beauty", "bathroom", "aesthetic"];
 
-/* =========================
-   PRODUCT SCORING ENGINE
-========================= */
-function scoreProduct(p){
+  const products = [
+    "Gold Kitchen Organizer Set",
+    "Luxury Marble Soap Dispenser",
+    "Acrylic Makeup Storage Box",
+    "Modern LED Mirror Light",
+    "Stainless Steel Sink Rack",
+    "Velvet Jewelry Organizer",
+    "Minimalist Desk Lamp",
+    "Glass Spice Jar Set",
+    "Hotel Style Bathroom Set",
+    "Smart Motion Sensor Light"
+  ];
 
- let score = 0;
+  return products.map((name, i) => {
+    return {
+      id: Date.now() + i,
+      name,
+      niche: niches[i % niches.length],
 
- score += p.rating * 15;                 // max 75
- score += Math.log10(p.reviews) * 10;   // trust factor
- score += p.boughtLastMonth / 200;      // demand
- score += (100 - p.bestSellerRank);     // best seller boost
- score += p.trendGrowth;                // trend
-
- if(p.price < 50) score += 20;          // affordable luxury boost
-
- return Math.floor(score);
+      // simulated real affiliate metrics
+      rating: (4 + Math.random()).toFixed(1),
+      reviews: Math.floor(Math.random() * 20000 + 500),
+      boughtLastMonth: Math.floor(Math.random() * 10000 + 100),
+      bestSellerRank: Math.floor(Math.random() * 100 + 1),
+      trendGrowth: Math.floor(Math.random() * 40 + 60),
+      price: Math.floor(Math.random() * 60 + 10)
+    };
+  });
 }
 
 /* =========================
-   SMART PRODUCT AI
+   SCORING ENGINE (AFFORDABLE LUXURY FOCUS)
 ========================= */
-app.get("/smart-product",(req,res)=>{
+function score(p) {
+  let s = 0;
 
- let bestProduct = null;
- let bestScore = 0;
+  s += parseFloat(p.rating) * 15;
+  s += Math.log10(p.reviews) * 10;
+  s += p.boughtLastMonth / 250;
+  s += (100 - p.bestSellerRank);
+  s += p.trendGrowth;
 
- amazonDB.forEach(p=>{
-   const s = scoreProduct(p);
-   if(s > bestScore){
-     bestScore = s;
-     bestProduct = p;
-   }
- });
+  if (p.price < 50) s += 25; // Affordable luxury boost
+  if (p.niche === "aesthetic") s += 20;
 
- const decision = bestScore > 220 ? "POST" : "HOLD";
+  return Math.floor(s);
+}
 
- const pin = {
-   product: bestProduct.name,
-   score: bestScore,
-   decision,
-   title:`Stop scrolling 😍 ${bestProduct.name}`,
-   description:`${bestProduct.name} has ${bestProduct.rating}⭐ and ${bestProduct.boughtLastMonth}+ bought last month.`,
-   hashtags:"#amazonfinds #luxuryfinds #pinterestviral #affiliatemarketing",
-   best_time:"2 PM Ethiopia (US morning peak)"
- };
+/* =========================
+   SMART PRODUCT PICKER (LIVE ENGINE)
+========================= */
+app.get("/smart-product", (req, res) => {
 
- if(decision==="POST"){
-   pinQueue.push(pin);
- }
+  const feed = generateLiveFeed();
 
- res.json(pin);
+  let best = null;
+  let bestScore = 0;
+
+  feed.forEach(p => {
+    const s = score(p);
+    if (s > bestScore) {
+      bestScore = s;
+      best = p;
+    }
+  });
+
+  const decision = bestScore > 230 ? "POST" : "HOLD";
+
+  const pin = {
+    product: best.name,
+    niche: best.niche,
+    score: bestScore,
+    rating: best.rating,
+    reviews: best.reviews,
+    boughtLastMonth: best.boughtLastMonth,
+    title: `Stop scrolling 😍 ${best.name}`,
+    description: `${best.name} is trending in US Pinterest + high conversion affiliate product.`,
+    hashtags: "#amazonfinds #luxuryfinds #pinterestviral #affiliatemarketing",
+    best_time: "2 PM Ethiopia (US morning peak)",
+    decision
+  };
+
+  if (decision === "POST") {
+    pinQueue.push(pin);
+  }
+
+  res.json(pin);
 });
 
 /* =========================
-   AMAZON LINK IMPORT
+   AMAZON LINK INPUT
 ========================= */
-app.get("/generate-from-link",(req,res)=>{
+app.get("/generate-from-link", (req, res) => {
 
- const name = req.query.name || "Amazon Product";
- const link = req.query.link || "Amazon Link";
+  const name = req.query.name || "Amazon Product";
+  const link = req.query.link || "Amazon Link";
 
- const pin = {
-   id: Date.now(),
-   product:name,
-   link,
-   title:`Amazon Find You Didn’t Know You Needed 😍`,
-   description:`${name} is trending in USA right now.`,
-   hashtags:"#amazonfinds #luxuryfinds #viralproducts",
-   best_time:"3 AM Ethiopia",
-   status:"QUEUED"
- };
+  const pin = {
+    id: Date.now(),
+    product: name,
+    link,
+    title: "Amazon Find You Didn’t Know You Needed 😍",
+    description: `${name} is trending in USA Pinterest right now.`,
+    hashtags: "#amazonfinds #luxuryfinds #viralproducts",
+    status: "QUEUED"
+  };
 
- pinQueue.push(pin);
- res.json(pin);
+  pinQueue.push(pin);
+
+  res.json(pin);
 });
 
 /* =========================
-   QUEUE + AUTO POST
+   QUEUE SYSTEM
 ========================= */
-app.get("/queue",(req,res)=>res.json(pinQueue));
-app.get("/posted",(req,res)=>res.json(postedPins));
+app.get("/queue", (req, res) => {
+  res.json(pinQueue);
+});
 
-setInterval(()=>{
- if(pinQueue.length===0) return;
- const pin = pinQueue.shift();
- pin.status="POSTED";
- postedPins.push(pin);
- console.log("POSTED:",pin.product);
-},60000);
+app.get("/posted", (req, res) => {
+  res.json(postedPins);
+});
 
-/* ========================= */
+/* =========================
+   AUTO POST ENGINE
+========================= */
+setInterval(() => {
+
+  if (pinQueue.length === 0) return;
+
+  const pin = pinQueue.shift();
+  pin.status = "POSTED";
+  pin.postedAt = new Date();
+
+  postedPins.push(pin);
+
+  console.log("AUTO POSTED:", pin.product);
+
+}, 60000);
+
+/* =========================
+   START SERVER
+========================= */
 const PORT = process.env.PORT || 3000;
-app.listen(PORT,()=>console.log("PIN AI FACTORY v6 LIVE 🔥"));
+app.listen(PORT, () => {
+  console.log("PIN AI FACTORY v7 LIVE FEED ENGINE 🚀");
+});
