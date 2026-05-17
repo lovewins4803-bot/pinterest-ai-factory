@@ -214,3 +214,26 @@ app.get("/clear", (req,res)=>{
 queue.length = 0;
 res.json({message:"queue cleared"});
 });
+
+app.get("/generate-from-image", (req,res)=>{
+
+const pin = {
+ id: Date.now(),
+ product: "Image Based Product",
+ title: "Stop scrolling 😍 You need this!",
+ description: "This viral Pinterest product is trending in the USA right now.",
+ hashtags: "#pinteresttrends #amazonfinds #viral",
+ best_time: "2 PM Ethiopia (US morning peak)",
+ status: "QUEUED",
+ createdAt: new Date()
+};
+
+queue.push(pin);
+
+res.json({
+ message:"Image pin generated",
+ pin,
+ queueSize: queue.length
+});
+
+});
