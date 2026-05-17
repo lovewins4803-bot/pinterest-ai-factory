@@ -8,6 +8,37 @@ const PORT = process.env.PORT || 3000;
 // CORE DATA
 // -------------------
 
+app.get("/daily-plan", (req, res) => {
+
+  const products = [
+    { name: "Air Fryer Rack", niche: "kitchen", demand: 9 },
+    { name: "Fridge Organizer", niche: "home", demand: 8 },
+    { name: "Silicone Cooking Set", niche: "kitchen", demand: 7 }
+  ];
+
+  const pick = products[Math.floor(Math.random() * products.length)];
+
+  let score = 40;
+  score += pick.demand * 4;
+
+  if (pick.niche === "kitchen") score += 10;
+  if (pick.niche === "home") score += 8;
+
+  const title = `Amazon trending 🔥 ${pick.name}`;
+  const hashtags = "#amazonfinds #viral #pinterest";
+  const best_time = "2 PM Ethiopia (US morning peak)";
+  const decision = score > 70 ? "POST" : "SKIP";
+
+  res.json({
+    product: pick.name,
+    title,
+    hashtags,
+    best_time,
+    decision,
+    score
+  });
+
+});
 const products = [
   "Sink Organizer",
   "Vegetable Chopper",
