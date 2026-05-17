@@ -4,34 +4,31 @@ const app = express();
 app.use(express.json());
 
 /* ===============================
-   TREND DATABASE (FREE)
+   TREND DATABASE
 ================================ */
 
 const monthlyTrends = {
-  1: ["New Year goals", "Home reset", "Declutter"],
-  2: ["Valentines gifts", "Self care", "Romantic home"],
-  3: ["Spring cleaning", "Organization", "Fresh home"],
-  4: ["Spring decor", "Outdoor living", "Gardening"],
-  5: ["Mother's day", "Kitchen upgrades", "Home refresh"],
-  6: ["Summer prep", "Travel essentials", "Beach items"],
-  7: ["Summer hacks", "Outdoor kitchen", "Vacation home"],
-  8: ["Back to school", "Study setup", "Dorm essentials"],
-  9: ["Fall decor", "Cozy home", "Organization reset"],
-  10:["Halloween", "Autumn home", "Cozy kitchen"],
-  11:["Black Friday", "Gift ideas", "Holiday prep"],
-  12:["Christmas gifts", "Holiday kitchen", "Winter home"]
+  1:["New Year goals","Declutter home"],
+  2:["Valentines gifts","Self care"],
+  3:["Spring cleaning","Organization"],
+  4:["Spring decor","Gardening"],
+  5:["Mothers day gifts","Kitchen upgrades"],
+  6:["Summer prep","Travel essentials"],
+  7:["Outdoor living","Vacation home"],
+  8:["Back to school","Dorm setup"],
+  9:["Fall decor","Cozy home"],
+  10:["Halloween","Autumn kitchen"],
+  11:["Black Friday deals","Gift ideas"],
+  12:["Christmas gifts","Holiday kitchen"]
 };
 
-const marketingAngles = [
-  "Problem solving",
-  "Before and after",
-  "Listicle",
-  "Urgency",
-  "Curiosity",
-  "Luxury aesthetic",
+const angles = [
+  "Problem solver",
+  "Before & After",
   "Budget hack",
+  "Luxury aesthetic",
   "Gift idea",
-  "Trend alert"
+  "Viral trend"
 ];
 
 function randomItem(arr){
@@ -39,36 +36,61 @@ function randomItem(arr){
 }
 
 /* ===============================
-   TREND REACTIVE PIN GENERATOR
+   DAILY PRODUCT DATABASE
+   (you will grow this later)
 ================================ */
 
-app.post("/generate-pin", (req,res)=>{
-  const { product, niche } = req.body;
+const products = [
+  {name:"Sink Organizer", niche:"kitchen organization"},
+  {name:"Vegetable Chopper", niche:"kitchen gadgets"},
+  {name:"Closet Organizer", niche:"home organization"},
+  {name:"Air Fryer Accessories", niche:"kitchen tools"}
+];
+
+/* ===============================
+   PIN GENERATOR FUNCTION
+================================ */
+
+function generatePin(productObj){
   const month = new Date().getMonth()+1;
-
   const trend = randomItem(monthlyTrends[month]);
-  const angle = randomItem(marketingAngles);
+  const angle = randomItem(angles);
 
-  const title = `🔥 ${trend}: ${product} Everyone Is Buying`;
-  const description =
-  `This ${product} is trending for ${trend}. 
-Perfect for people searching ${niche}. 
-Pinterest users are saving this like crazy!`;
+  return {
+    product: productObj.name,
+    title:`🔥 ${trend}: ${productObj.name} Everyone Is Buying`,
+    description:`This ${productObj.name} is trending for ${trend}. Perfect for ${productObj.niche}. Pinterest users are saving this daily.`,
+    hashtags:`#amazonfinds #viralproducts #${productObj.niche.replace(" ","")} #musthave`,
+    overlay:`${trend.toUpperCase()} MUST HAVE`,
+    angle
+  };
+}
 
-  const hashtags = `#amazonfinds #viralproducts #${niche.replace(" ","")} #musthave #trendingnow`;
+/* ===============================
+   AUTO DAILY GENERATOR
+================================ */
 
-  const overlay = `${trend.toUpperCase()} MUST HAVE`;
+let todayPins = [];
 
-  res.json({
-    trend,
-    angle,
-    title,
-    description,
-    hashtags,
-    overlay
-  });
+function generateDailyPins(){
+  todayPins = products.map(p => generatePin(p));
+  console.log("📌 Daily pins generated:", todayPins.length);
+}
+
+/* Generate pins every 24 hours */
+setInterval(generateDailyPins, 24 * 60 * 60 * 1000);
+
+/* Generate immediately on server start */
+generateDailyPins();
+
+/* ===============================
+   API ROUTES
+================================ */
+
+app.get("/today-pins", (req,res)=>{
+  res.json(todayPins);
 });
 
-app.get("/", (req,res)=>res.send("Trend Engine Running 🚀"));
+app.get("/", (req,res)=>res.send("Auto Poster Brain Running 🤖"));
 
 app.listen(3000, ()=>console.log("Server running"));
