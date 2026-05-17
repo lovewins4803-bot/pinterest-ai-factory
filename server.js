@@ -3,35 +3,82 @@ import express from "express";
 const app = express();
 app.use(express.json());
 
-// ==============================
-// FREE SAAS CORE ENGINE
-// ==============================
+/* =========================
+   PROFIT OPTIMIZER ENGINE
+========================= */
 
-function pick(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
+function detectCategory(product) {
+  const p = product.toLowerCase();
+
+  if (p.includes("course") || p.includes("ebook") || p.includes("software")) {
+    return "digital";
+  }
+
+  if (p.includes("phone") || p.includes("laptop") || p.includes("kitchen") || p.includes("home")) {
+    return "physical_high_value";
+  }
+
+  if (p.includes("deal") || p.includes("cheap") || p.includes("discount")) {
+    return "budget";
+  }
+
+  return "general";
 }
 
-function cleanTag(text) {
-  return text.replace(/\s/g, "").replace(/[^a-zA-Z0-9]/g, "");
+function buildLinks(product) {
+  const q = encodeURIComponent(product);
+
+  return {
+    amazon: `https://www.amazon.com/s?k=${q}`,
+    ebay: `https://www.ebay.com/sch/i.html?_nkw=${q}`,
+
+    cj: `https://www.cj.com/search?query=${q}`,
+    admitad: `https://www.admitad.com/search/?q=${q}`,
+
+    jvzoo: `https://www.jvzoo.com/content-search/${q}`
+  };
 }
 
-// FREE affiliate system
-function affiliate(product) {
-  return "https://www.amazon.com/s?k=" + encodeURIComponent(product);
+function score(network, category) {
+  const matrix = {
+    amazon: { digital: 3, physical_high_value: 9, budget: 8, general: 8 },
+    ebay: { digital: 4, physical_high_value: 7, budget: 9, general: 7 },
+    cj: { digital: 8, physical_high_value: 6, budget: 5, general: 7 },
+    admitad: { digital: 7, physical_high_value: 7, budget: 6, general: 7 },
+    jvzoo: { digital: 10, physical_high_value: 2, budget: 3, general: 6 }
+  };
+
+  return matrix[network][category] || 5;
 }
 
-// ==============================
-// FREE IMAGE GENERATION (NO API KEY)
-// Pollinations AI
-// ==============================
-function generateImageURL(prompt) {
-  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}`;
+function optimize(product) {
+  const category = detectCategory(product);
+  const links = buildLinks(product);
+
+  const scores = {};
+
+  Object.keys(links).forEach((net) => {
+    scores[net] = score(net, category);
+  });
+
+  const bestNetwork = Object.keys(scores).reduce((a, b) =>
+    scores[a] > scores[b] ? a : b
+  );
+
+  return {
+    category,
+    bestNetwork,
+    bestLink: links[bestNetwork],
+    allLinks: links,
+    scores
+  };
 }
 
-// ==============================
-// PIN ENGINE
-// ==============================
-app.post("/generate-pin", (req, res) => {
+/* =========================
+   PIN GENERATION API
+========================= */
+
+app.post("/generate-pin", async (req, res) => {
   try {
     const { product } = req.body;
 
@@ -39,48 +86,19 @@ app.post("/generate-pin", (req, res) => {
       return res.status(400).json({ error: "product is required" });
     }
 
-    const hooks = [
-      "This is going viral",
-      "Everyone is saving this",
-      "Stop scrolling now",
-      "Pinterest obsession alert",
-      "Hidden gem you need"
-    ];
+    const optimizer = optimize(product);
 
-    const hook = pick(hooks);
-
-    const hashtags = `#${cleanTag(product)} #pinterest #viral #trending #amazonfinds`;
-
-    // IMAGE PROMPTS (FREE API COMPATIBLE)
-    const imagePrompt = `
-Pinterest viral product photo of ${product},
-aesthetic lighting, clean background,
-minimal style, 4:5 vertical composition,
-space for text overlay
-`;
-
-    const image_url = generateImageURL(imagePrompt);
-
-    const pins = Array.from({ length: 5 }).map((_, i) => ({
-      id: i + 1,
-      title: `${hook}: ${product}`,
-      description: `${product} is trending on Pinterest. Highly aesthetic and viral.`,
-      hashtags,
-      overlay_text: hook.toUpperCase(),
-      affiliate_link: affiliate(product),
-      image_url
-    }));
+    const pin = {
+      title: `🔥 Best ${product} You Should Not Miss`,
+      description: `${product} is trending right now. High demand product for 2026 buyers.`,
+      hashtags: "#pinterest #viral #amazonfinds #affiliatemarketing #trending",
+      overlay_text: "DON'T MISS THIS DEAL"
+    };
 
     res.json({
       product,
-      hook,
-      pins,
-      image_engine: "Pollinations AI (FREE)",
-      affiliate: affiliate(product),
-      saas_ready: {
-        status: "WORKING FREE SAAS",
-        next_step: "Add user accounts + dashboard UI"
-      }
+      pin,
+      profit_engine: optimizer
     });
 
   } catch (err) {
@@ -88,15 +106,12 @@ space for text overlay
   }
 });
 
-// ==============================
-// HEALTH
-// ==============================
+/* ========================= */
+
 app.get("/", (req, res) => {
-  res.send("Pinterest AI Factory v7 SAAS (FREE VERSION) 🚀");
+  res.send("Pinterest AI Factory + Profit Optimizer Engine Running 🚀");
 });
 
-// ==============================
-// RENDER FIX
-// ==============================
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Server running on port", PORT));
+app.listen(3000, () => {
+  console.log("Server running on port 3000");
+});
