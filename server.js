@@ -237,3 +237,31 @@ res.json({
 });
 
 });
+
+app.get("/generate-from-link", (req,res)=>{
+
+const productLink = req.query.link || "Amazon Product";
+const productName = req.query.name || "Amazon Product";
+
+const pin = {
+ id: Date.now(),
+ product: productName,
+ link: productLink,
+ title: "Amazon Find You Didn’t Know You Needed 😍",
+ description: productName + " is trending on Pinterest USA right now.",
+ hashtags: "#amazonfinds #pinteresttrends #viralproducts",
+ best_time: "3 AM Ethiopia (US night peak)",
+ image_source: "Amazon product image (auto)",
+ status: "QUEUED",
+ createdAt: new Date()
+};
+
+queue.push(pin);
+
+res.json({
+ message:"Amazon link processed",
+ pin,
+ queueSize: queue.length
+});
+
+});
