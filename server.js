@@ -4,8 +4,8 @@ const app = express();
 app.use(express.json());
 
 // ==============================
-// PINTEREST AI FACTORY v4
-// (CONTENT + IMAGE + AUTOMATION READY)
+// PINTEREST AI FACTORY v5
+// FULL BUSINESS PIPELINE ENGINE
 // ==============================
 
 function pick(arr) {
@@ -16,27 +16,41 @@ function cleanTag(text) {
   return text.replace(/\s/g, "").replace(/[^a-zA-Z0-9]/g, "");
 }
 
-// Affiliate link placeholder (safe)
+// Affiliate system (safe placeholder)
 function generateAffiliateLink(product) {
   return "https://www.amazon.com/s?k=" + encodeURIComponent(product);
 }
 
-// IMAGE PROMPT ENGINE (NEW 🔥)
-function generateImagePrompt(product, style) {
+// Hook engine
+function getHook() {
+  const hooks = [
+    "This is going viral",
+    "Everyone is saving this",
+    "Stop scrolling now",
+    "Pinterest is obsessed with this",
+    "Hidden gem you need right now"
+  ];
+  return pick(hooks);
+}
+
+// Image prompt generator (REAL workflow core)
+function buildImagePrompt(product, style) {
   const styles = {
-    aesthetic: "minimal aesthetic Pinterest style, soft lighting, clean background",
-    luxury: "luxury modern design, high-end product photography, soft shadows",
-    viral: "viral Pinterest pin style, bold text overlay space, eye-catching composition"
+    aesthetic: "soft aesthetic Pinterest style, minimal background, natural lighting",
+    luxury: "luxury product photography, premium look, high-end branding",
+    viral: "viral Pinterest pin design, bold composition, space for text overlay"
   };
 
   return `
-A ${styles[style]} image of ${product}.
-Centered composition, high resolution, Pinterest optimized, 4:5 aspect ratio,
-text overlay space at top, soft natural lighting, ultra detailed.
+Create a high-quality Pinterest pin image of ${product}.
+Style: ${styles[style]}.
+Aspect ratio 4:5, centered composition.
+Include clean space for headline text overlay.
+Ultra detailed, social media optimized.
 `;
 }
 
-// MAIN ENDPOINT
+// MAIN ENGINE
 app.post("/generate-pin", (req, res) => {
   try {
     const { product } = req.body;
@@ -45,16 +59,7 @@ app.post("/generate-pin", (req, res) => {
       return res.status(400).json({ error: "product is required" });
     }
 
-    const hooks = [
-      "This is going viral",
-      "Everyone is saving this",
-      "Stop scrolling now",
-      "Pinterest can’t stop this",
-      "Hidden gem everyone missed"
-    ];
-
-    const hook = pick(hooks);
-
+    const hook = getHook();
     const affiliate_link = generateAffiliateLink(product);
 
     const hashtags = [
@@ -67,46 +72,63 @@ app.post("/generate-pin", (req, res) => {
       "#musthave"
     ].join(" ");
 
-    // 3 IMAGE STYLES (VERY IMPORTANT FOR PINTEREST)
-    const images = {
-      aesthetic: generateImagePrompt(product, "aesthetic"),
-      luxury: generateImagePrompt(product, "luxury"),
-      viral: generateImagePrompt(product, "viral")
-    };
-
-    // MULTIPLE PIN VARIATIONS
-    const pins = Array.from({ length: 5 }).map((_, i) => ({
-      title: `${hook}: ${product} (${i + 1})`,
+    // CONTENT GENERATION
+    const pinContent = Array.from({ length: 5 }).map((_, i) => ({
+      id: i + 1,
+      title: `${hook}: ${product}`,
       description: `
-${product} is trending on Pinterest.
+${product} is trending right now on Pinterest.
 
-✔ Useful & aesthetic
-✔ Highly shareable
-✔ Saves time and money
+✔ Saves time
+✔ Looks aesthetic
+✔ Highly recommended
+
+People are saving this fast — don’t miss it.
       `,
       hashtags,
       overlay_text: hook.toUpperCase(),
       affiliate_link
     }));
 
-    res.json({
+    // IMAGE LAYER (IMPORTANT UPGRADE)
+    const images = {
+      aesthetic: buildImagePrompt(product, "aesthetic"),
+      luxury: buildImagePrompt(product, "luxury"),
+      viral: buildImagePrompt(product, "viral")
+    };
+
+    // FINAL PACKAGE (BUSINESS FORMAT)
+    const responsePackage = {
       product,
       hook,
       affiliate_link,
-      pins,
-      image_prompts: images
-    });
+
+      // content layer
+      pins: pinContent,
+
+      // visual layer
+      image_prompts: images,
+
+      // business insight layer
+      strategy: {
+        recommendation: "Post 3–5 variations daily for best Pinterest reach",
+        best_style: "viral + aesthetic mix",
+        monetization: "Use affiliate link in bio or pin description"
+      }
+    };
+
+    res.json(responsePackage);
 
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// HEALTH
+// health check
 app.get("/", (req, res) => {
-  res.send("Pinterest AI Factory v4 (CONTENT + IMAGE ENGINE) 🚀");
+  res.send("Pinterest AI Factory v5 (FULL BUSINESS ENGINE) 🚀");
 });
 
-// RENDER FIX
+// server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("Server running on port", PORT));
