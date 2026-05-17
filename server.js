@@ -3,94 +3,99 @@ import express from "express";
 const app = express();
 app.use(express.json());
 
-/* ===============================
-   TREND DATABASE
-================================ */
+// -----------------------------
+// PIN AI FACTORY CORE ENGINE (MVP)
+// -----------------------------
 
-const monthlyTrends = {
-  1:["New Year goals","Declutter home"],
-  2:["Valentines gifts","Self care"],
-  3:["Spring cleaning","Organization"],
-  4:["Spring decor","Gardening"],
-  5:["Mothers day gifts","Kitchen upgrades"],
-  6:["Summer prep","Travel essentials"],
-  7:["Outdoor living","Vacation home"],
-  8:["Back to school","Dorm setup"],
-  9:["Fall decor","Cozy home"],
-  10:["Halloween","Autumn kitchen"],
-  11:["Black Friday deals","Gift ideas"],
-  12:["Christmas gifts","Holiday kitchen"]
-};
-
-const angles = [
-  "Problem solver",
-  "Before & After",
-  "Budget hack",
-  "Luxury aesthetic",
-  "Gift idea",
-  "Viral trend"
-];
-
-function randomItem(arr){
-  return arr[Math.floor(Math.random()*arr.length)];
+function getUSPostingTime() {
+  // Simple US best posting window simulation
+  const times = [
+    "08:30 AM EST",
+    "12:30 PM EST",
+    "08:30 PM EST"
+  ];
+  return times[Math.floor(Math.random() * times.length)];
 }
 
-/* ===============================
-   DAILY PRODUCT DATABASE
-   (you will grow this later)
-================================ */
+function convertToEthiopiaTime(usTime) {
+  return `${usTime} (≈ Ethiopia next day shift window)`;
+}
 
-const products = [
-  {name:"Sink Organizer", niche:"kitchen organization"},
-  {name:"Vegetable Chopper", niche:"kitchen gadgets"},
-  {name:"Closet Organizer", niche:"home organization"},
-  {name:"Air Fryer Accessories", niche:"kitchen tools"}
-];
+function generateHashtags(product) {
+  return `#amazonfinds #viral #pinterest #affiliatemarketing #${product.replace(/\s/g, "").toLowerCase()}`;
+}
 
-/* ===============================
-   PIN GENERATOR FUNCTION
-================================ */
+function generatePin(product) {
+  const hooks = [
+    "🔥 Everyone is buying this right now",
+    "💡 You didn’t know you needed this",
+    "🚀 Viral Amazon find trending now",
+    "⚡ Game-changing home upgrade",
+    "🎯 Best hidden gem product"
+  ];
 
-function generatePin(productObj){
-  const month = new Date().getMonth()+1;
-  const trend = randomItem(monthlyTrends[month]);
-  const angle = randomItem(angles);
+  const angles = [
+    "Problem Solver",
+    "Gift Idea",
+    "Home Upgrade",
+    "Budget Hack",
+    "Viral Trend"
+  ];
+
+  const hook = hooks[Math.floor(Math.random() * hooks.length)];
+  const angle = angles[Math.floor(Math.random() * angles.length)];
 
   return {
-    product: productObj.name,
-    title:`🔥 ${trend}: ${productObj.name} Everyone Is Buying`,
-    description:`This ${productObj.name} is trending for ${trend}. Perfect for ${productObj.niche}. Pinterest users are saving this daily.`,
-    hashtags:`#amazonfinds #viralproducts #${productObj.niche.replace(" ","")} #musthave`,
-    overlay:`${trend.toUpperCase()} MUST HAVE`,
-    angle
+    product,
+    title: `${hook}: ${product}`,
+    description: `${product} is trending right now on Pinterest and Amazon.\nPerfect for everyday use and highly recommended by buyers.\nDon’t miss this viral opportunity!`,
+    hashtags: generateHashtags(product),
+    overlay_text: `${product.toUpperCase()} MUST HAVE`,
+    pin_angle: angle,
+    affiliate_hook: `Grab this ${product} before it sells out!`,
+    seo_keywords: `${product}, amazon finds, viral products, trending items`,
+    board_suggestion: "Amazon Finds / Viral Products",
+    best_post_time: getUSPostingTime(),
+    ethiopia_time: convertToEthiopiaTime(getUSPostingTime()),
+    manual_edit: [
+      "Improve hook strength if needed",
+      "Add urgency words like 'limited', 'viral', 'trending'",
+      "Check affiliate link placement"
+    ]
   };
 }
 
-/* ===============================
-   AUTO DAILY GENERATOR
-================================ */
+// -----------------------------
+// API ROUTE
+// -----------------------------
 
-let todayPins = [];
+app.post("/generate-pin", (req, res) => {
+  try {
+    const { product } = req.body;
 
-function generateDailyPins(){
-  todayPins = products.map(p => generatePin(p));
-  console.log("📌 Daily pins generated:", todayPins.length);
-}
+    if (!product) {
+      return res.status(400).json({ error: "Product is required" });
+    }
 
-/* Generate pins every 24 hours */
-setInterval(generateDailyPins, 24 * 60 * 60 * 1000);
+    const pin = generatePin(product);
 
-/* Generate immediately on server start */
-generateDailyPins();
+    res.json(pin);
 
-/* ===============================
-   API ROUTES
-================================ */
-
-app.get("/today-pins", (req,res)=>{
-  res.json(todayPins);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-app.get("/", (req,res)=>res.send("Auto Poster Brain Running 🤖"));
+// -----------------------------
+// HEALTH CHECK
+// -----------------------------
 
-app.listen(3000, ()=>console.log("Server running"));
+app.get("/", (req, res) => {
+  res.send("Pin AI Factory MVP is running 🚀");
+});
+
+// -----------------------------
+
+app.listen(3000, () => {
+  console.log("Pin AI Factory MVP running on port 3000");
+});
