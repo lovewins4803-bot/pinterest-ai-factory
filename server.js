@@ -6,86 +6,57 @@ app.use(express.json());
 let pinQueue = [];
 let postedPins = [];
 let userProducts = [];
+let usedProducts = new Set();
 
 /* =========================
-   LUXURY CHECK (AFFORDABLE LUXURY)
+   LUXURY BOARD SYSTEM
 ========================= */
-const luxuryWords = [
- "gold","marble","glass","aesthetic","modern","minimal",
- "luxury","premium","sleek","LED","organizer","spa",
- "hotel","matte","black","white","bamboo","acrylic"
-];
+function pickBoard(productName){
 
-function luxuryScore(name){
- let score = 0;
- let n = name.toLowerCase();
+ const name = productName.toLowerCase();
 
- luxuryWords.forEach(w=>{
-   if(n.includes(w)) score += 10;
- });
+ if(name.includes("kitchen")) return "Luxury Kitchen Finds";
+ if(name.includes("bath") || name.includes("shower")) return "Bathroom Upgrade Ideas";
+ if(name.includes("beauty") || name.includes("makeup")) return "Beauty Luxury Finds";
+ if(name.includes("desk") || name.includes("lamp")) return "Home Aesthetic Setup";
 
- if(name.length < 30) score += 10;
+ return "Affordable Luxury Finds";
+}
 
- return Math.min(score,100);
+/* =========================
+   DUPLICATE CHECKER
+========================= */
+function isDuplicate(name){
+ return usedProducts.has(name.toLowerCase());
 }
 
 /* =========================
    VIRAL SCORE ENGINE
 ========================= */
-function viralEngine(product){
+function viralScore(name){
 
- const luxury = luxuryScore(product.name);
+ let score = 50;
 
- const ctr = Math.min(95,
-   luxury * 0.6 +
-   Math.random()*30
- );
+ if(name.toLowerCase().includes("gold")) score += 15;
+ if(name.toLowerCase().includes("marble")) score += 15;
+ if(name.toLowerCase().includes("luxury")) score += 10;
+ if(name.length < 30) score += 10;
 
- const saveRate = Math.min(95,
-   luxury * 0.7 +
-   Math.random()*25
- );
+ score += Math.floor(Math.random()*30);
 
- const viralChance = Math.min(95,
-   (ctr + saveRate)/2 +
-   Math.random()*20
- );
-
- const usMarketFit =
- product.name.length < 35 ? 85 : 70;
-
- const score =
- ctr*0.3 + saveRate*0.3 + viralChance*0.3 + usMarketFit*0.1;
-
- return {
-   ctr: Math.floor(ctr),
-   saveRate: Math.floor(saveRate),
-   viralChance: Math.floor(viralChance),
-   usMarketFit,
-   score: Math.floor(score)
- };
+ return score;
 }
 
 /* =========================
    VIRAL CONTENT GENERATOR
 ========================= */
-function generatePin(product){
-
- const titles = [
-   `I wish I knew this sooner 😳 ${product.name}`,
-   `Amazon find that looks EXPENSIVE 💎`,
-   `Hidden luxury under budget 🔥`,
-   `Pinterest viral aesthetic upgrade ✨`,
-   `Affordable luxury you NEED 😍`
- ];
-
- const title = titles[Math.floor(Math.random()*titles.length)];
+function generateContent(name){
 
  return {
-   title,
-   description: `${product.name} is trending in US Pinterest luxury niche.`,
-   hashtags: "#amazonfinds #affordableluxury #pinterestviral #homeaesthetic",
-   image_prompt: `Luxury Pinterest product photo of ${product.name}, soft lighting, marble background, high-end aesthetic`
+   title: `I wish I knew this sooner 😳 ${name}`,
+   description: `${name} is trending in US Pinterest Affordable Luxury niche.`,
+   hashtags: "#amazonfinds #affordableluxury #pinterestviral #luxuryhome",
+   image_prompt: `Luxury aesthetic product photo of ${name}, marble background, soft lighting, high-end Pinterest style`
  };
 }
 
@@ -106,28 +77,34 @@ app.get("/smart-product",(req,res)=>{
 
  pool.forEach(p=>{
 
-   const v = viralEngine(p);
+   if(isDuplicate(p.name)) return;
 
-   if(v.score > bestScore){
-     bestScore = v.score;
+   const score = viralScore(p.name);
+
+   if(score > bestScore){
+     bestScore = score;
      best = p;
-     best.metrics = v;
    }
  });
 
- const pinData = generatePin(best);
+ if(!best){
+   return res.json({message:"No new products available"});
+ }
 
- const decision =
- best.metrics.score > 70 ? "POST" : "HOLD";
+ usedProducts.add(best.name.toLowerCase());
+
+ const board = pickBoard(best.name);
+ const content = generateContent(best.name);
+
+ const decision = bestScore > 70 ? "POST" : "HOLD";
 
  const pin = {
    product: best.name,
-   metrics: best.metrics,
-
-   ...pinData,
-
+   board,
+   score: bestScore,
+   ...content,
    decision,
-   best_time: "2 PM Ethiopia (US peak traffic)"
+   best_time: "2 PM Ethiopia (US Pinterest peak)"
  };
 
  if(decision === "POST"){
@@ -144,19 +121,24 @@ app.post("/add-product",(req,res)=>{
 
  const {name,link,image,niche} = req.body;
 
- const product = {
-   id: Date.now(),
-   name,
-   link: link || null,
-   image: image || null,
-   niche: niche || "aesthetic"
- };
+ const product = {name,link,image,niche};
 
  userProducts.push(product);
 
+ res.json({message:"added",product});
+});
+
+/* =========================
+   DAILY DASHBOARD
+========================= */
+app.get("/daily-plan",(req,res)=>{
+
+ const best = userProducts[0] || {name:"No product yet"};
+
  res.json({
-   message:"Product added",
-   product
+   best_product: best.name,
+   reason: "Selected from curated luxury pool",
+   tip: "Focus on marble/gold/aesthetic products for higher CTR"
  });
 });
 
@@ -175,7 +157,7 @@ app.get("/clear",(req,res)=>{
 });
 
 /* =========================
-   AUTO POST SYSTEM
+   AUTO SCHEDULER
 ========================= */
 setInterval(()=>{
 
@@ -197,5 +179,5 @@ setInterval(()=>{
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT,()=>{
- console.log("🚀 PIN AI FACTORY v11 VIRAL OPTIMIZER LIVE");
+ console.log("🚀 PIN AI FACTORY v12 BUSINESS MODE LIVE");
 });
