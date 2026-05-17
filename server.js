@@ -13,7 +13,59 @@ let postedPins = [];
    HOME
 ========================= */
 app.get("/", (req, res) => {
-  res.send("PIN AI FACTORY v4 TREND ENGINE 🚀");
+res.send(`
+<html>
+<head>
+<title>Pin AI Factory</title>
+<style>
+body { font-family: Arial; background:#0f172a; color:white; text-align:center; }
+button { padding:15px; margin:10px; font-size:18px; border-radius:8px; border:none; }
+.generate { background:#22c55e; }
+.view { background:#3b82f6; }
+.clear { background:#ef4444; }
+.card { background:#1e293b; padding:20px; margin:20px; border-radius:10px; }
+</style>
+</head>
+
+<body>
+<h1>📌 PIN AI FACTORY CONTROL CENTER</h1>
+
+<div class="card">
+<h2>Generate New Pin</h2>
+<button class="generate" onclick="generate()">Generate Pin</button>
+<p id="genResult"></p>
+</div>
+
+<div class="card">
+<h2>Queue</h2>
+<button class="view" onclick="loadQueue()">Refresh Queue</button>
+<button class="clear" onclick="clearQueue()">Clear Queue</button>
+<pre id="queue"></pre>
+</div>
+
+<script>
+async function generate(){
+ const res = await fetch('/generate-pin');
+ const data = await res.json();
+ document.getElementById('genResult').innerText = JSON.stringify(data,null,2);
+ loadQueue();
+}
+
+async function loadQueue(){
+ const res = await fetch('/queue');
+ const data = await res.json();
+ document.getElementById('queue').innerText = JSON.stringify(data,null,2);
+}
+
+async function clearQueue(){
+ await fetch('/clear');
+ loadQueue();
+}
+</script>
+
+</body>
+</html>
+`);
 });
 
 /* =========================
