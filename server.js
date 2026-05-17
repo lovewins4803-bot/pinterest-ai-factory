@@ -4,118 +4,143 @@ const app = express();
 app.use(express.json());
 
 /* =========================
-   STATE STORAGE
+   DATABASE (SIMPLIFIED MEMORY DB)
 ========================= */
-let products = [];
-let pins = [];
-let posted = [];
-let stats = {
- earnings:0,
- clicks:0,
- posts:0
-};
-
-let productStats = {};
+let users = {};
+let sessions = {};
+let globalStats = {};
 
 /* =========================
-   LUXURY SCORING
+   AUTH SYSTEM (SIMPLE SAAS LOGIN)
 ========================= */
-function luxuryScore(name){
- let score = 50;
+app.post("/register",(req,res)=>{
+
+ const {userId} = req.body;
+
+ if(users[userId]){
+   return res.json({message:"User already exists"});
+ }
+
+ users[userId] = {
+   products:[],
+   pins:[],
+   earnings:0,
+   clicks:0
+ };
+
+ res.json({message:"registered",userId});
+});
+
+/* =========================
+   LOGIN SESSION
+========================= */
+app.post("/login",(req,res)=>{
+
+ const {userId} = req.body;
+
+ if(!users[userId]){
+   return res.json({message:"User not found"});
+ }
+
+ const token = Date.now()+Math.random().toString(36);
+
+ sessions[token] = userId;
+
+ res.json({token});
+});
+
+/* =========================
+   GET USER FROM TOKEN
+========================= */
+function getUser(token){
+ return users[sessions[token]];
+}
+
+/* =========================
+   LUXURY SCORE ENGINE
+========================= */
+function score(name){
+ let s = 50;
  const n = name.toLowerCase();
 
- if(n.includes("gold")) score += 15;
- if(n.includes("marble")) score += 15;
- if(n.includes("glass")) score += 10;
- if(n.includes("luxury")) score += 10;
- if(name.length < 30) score += 10;
+ if(n.includes("gold")) s += 15;
+ if(n.includes("marble")) s += 15;
+ if(n.includes("glass")) s += 10;
+ if(n.includes("luxury")) s += 10;
+ if(name.length < 30) s += 10;
 
- score += Math.floor(Math.random()*30);
+ s += Math.floor(Math.random()*30);
 
- return score;
+ return s;
 }
 
 /* =========================
-   MONEY MODEL
-========================= */
-function moneyModel(score){
- const ctr = Math.min(95, score*0.8);
- const save = Math.min(95, score*0.7);
- const viral = Math.min(95,(ctr+save)/2);
- const earnings = (ctr+save+viral)/3/10;
-
- return {
-   ctr:Math.floor(ctr),
-   save:Math.floor(save),
-   viral:Math.floor(viral),
-   earnings:+earnings.toFixed(2)
- };
-}
-
-/* =========================
-   PIN GENERATOR
+   VIRAL PIN GENERATOR
 ========================= */
 function createPin(product){
 
- const score = luxuryScore(product.name);
- const money = moneyModel(score);
+ const s = score(product.name);
 
  return {
    id: Date.now(),
    product: product.name,
    title: `I wish I knew this sooner 😳 ${product.name}`,
-   description: `${product.name} trending in Affordable Luxury niche`,
+   description: `${product.name} trending in Pinterest Luxury niche`,
    hashtags: "#amazonfinds #affordableluxury #pinterestviral",
-   score,
-   ...money,
-   decision: score > 70 ? "POST" : "HOLD",
-   createdAt: new Date()
+   score: s,
+   earnings: (s/10).toFixed(2),
+   decision: s > 70 ? "POST" : "HOLD"
  };
 }
 
 /* =========================
-   ADD PRODUCT
+   ADD PRODUCT (PER USER)
 ========================= */
 app.post("/add-product",(req,res)=>{
 
- const {name} = req.body;
+ const {token,name} = req.body;
+ const user = getUser(token);
 
- const product = {name};
+ if(!user) return res.json({message:"invalid session"});
 
- products.push(product);
+ user.products.push({name});
 
- res.json({
-   message:"Product added",
-   product
- });
+ res.json({message:"added",name});
 });
 
 /* =========================
-   SMART PICK
+   SMART ENGINE (PER USER)
 ========================= */
 app.get("/smart",(req,res)=>{
 
- if(products.length === 0){
-   return res.json({message:"No products"});
+ const token = req.headers.token;
+ const user = getUser(token);
+
+ if(!user) return res.json({message:"invalid session"});
+
+ if(user.products.length === 0){
+   return res.json({message:"no products"});
  }
 
  let best = null;
  let bestScore = 0;
 
- products.forEach(p=>{
+ user.products.forEach(p=>{
 
-   const score = luxuryScore(p.name);
+   const s = score(p.name);
 
-   if(score > bestScore){
-     bestScore = score;
+   if(s > bestScore){
+     bestScore = s;
      best = p;
    }
+
  });
 
  const pin = createPin(best);
 
  if(pin.decision === "POST"){
-   pins.push(pin);
+   user.pins.push(pin);
+   user.earnings += parseFloat(pin.earnings);
  }
 
  res.json(pin);
@@ -126,11 +151,16 @@ app.get("/smart",(req,res)=>{
 ========================= */
 app.get("/batch",(req,res)=>{
 
+ const token = req.headers.token;
+ const user = getUser(token);
+
+ if(!user) return res.json({message:"invalid session"});
+
  let batch = [];
 
  for(let i=0;i<5;i++){
 
-   const p = products[Math.floor(Math.random()*products.length)];
+   const p = user.products[Math.floor(Math.random()*user.products.length)];
    if(!p) continue;
 
    batch.push(createPin(p));
@@ -140,73 +170,40 @@ app.get("/batch",(req,res)=>{
 });
 
 /* =========================
-   DASHBOARD (MAIN CONTROL PANEL)
+   DASHBOARD (PER USER)
 ========================= */
 app.get("/dashboard",(req,res)=>{
 
- let best = null;
- let bestEarn = 0;
+ const token = req.headers.token;
+ const user = getUser(token);
 
- Object.values(productStats).forEach(p=>{
+ if(!user) return res.json({message:"invalid session"});
 
-   if(p.earnings > bestEarn){
-     bestEarn = p.earnings;
-     best = p;
-   }
+ res.json({
+   products:user.products.length,
+   pins:user.pins.length,
+   earnings:user.earnings,
+   clicks:user.clicks
+ });
+});
 
+/* =========================
+   GLOBAL ANALYTICS
+========================= */
+app.get("/global",(req,res)=>{
+
+ let totalUsers = Object.keys(users).length;
+ let totalEarnings = 0;
+
+ Object.values(users).forEach(u=>{
+   totalEarnings += u.earnings;
  });
 
- res.send(`
- <h1>📌 PIN AI FACTORY DASHBOARD</h1>
-
- <h2>💰 Stats</h2>
- <p>Total Earnings: $${stats.earnings}</p>
- <p>Total Posts: ${stats.posts}</p>
- <p>Total Clicks: ${stats.clicks}</p>
-
- <h2>🏆 Top Product</h2>
- <p>${best ? best.name : "No data yet"}</p>
-
- <h2>⚡ Actions</h2>
- <ul>
-   <li><a href="/smart">Run Smart Pick</a></li>
-   <li><a href="/batch">Generate Batch</a></li>
-   <li><a href="/queue">View Pins</a></li>
-   <li><a href="/clear">Clear Data</a></li>
- </ul>
- `);
+ res.json({
+   users: totalUsers,
+   earnings: totalEarnings
+ });
 });
-
-/* =========================
-   QUEUE + POSTING
-========================= */
-app.get("/queue",(req,res)=>res.json(pins));
-app.get("/posted",(req,res)=>res.json(posted));
-
-app.get("/clear",(req,res)=>{
- pins.length = 0;
- res.json({message:"cleared"});
-});
-
-/* =========================
-   AUTO POST SIMULATION
-========================= */
-setInterval(()=>{
-
- if(pins.length === 0) return;
-
- const pin = pins.shift();
- pin.status = "POSTED";
- pin.postedAt = new Date();
-
- posted.push(pin);
-
- stats.posts++;
- stats.earnings += pin.earnings || 0;
-
- console.log("POSTED:",pin.product);
-
-},5000);
 
 /* =========================
    START SERVER
@@ -214,5 +211,5 @@ setInterval(()=>{
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT,()=>{
- console.log("🚀 PIN AI FACTORY v17 FINAL SAAS DASHBOARD LIVE");
+ console.log("🚀 PIN AI FACTORY v18 SAAS SYSTEM LIVE");
 });
