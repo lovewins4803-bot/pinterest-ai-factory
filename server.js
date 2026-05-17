@@ -3,23 +3,25 @@ const app = express();
 
 app.use(express.json());
 
-let pinQueue = [];
-let postedPins = [];
-let userProducts = [];
-let performanceDB = {};
-let dailyStats = {
- totalEarnings:0,
- totalPosts:0,
- totalClicks:0
+/* =========================
+   STATE STORAGE
+========================= */
+let products = [];
+let pins = [];
+let posted = [];
+let stats = {
+ earnings:0,
+ clicks:0,
+ posts:0
 };
 
+let productStats = {};
+
 /* =========================
-   VIRAL ENGINE
+   LUXURY SCORING
 ========================= */
-function scoreProduct(name){
-
+function luxuryScore(name){
  let score = 50;
-
  const n = name.toLowerCase();
 
  if(n.includes("gold")) score += 15;
@@ -37,73 +39,72 @@ function scoreProduct(name){
    MONEY MODEL
 ========================= */
 function moneyModel(score){
-
- const ctr = Math.min(95, score * 0.8);
- const save = Math.min(95, score * 0.7);
- const viral = Math.min(95, (ctr + save)/2);
-
- const earnings = (ctr + save + viral)/3/10;
+ const ctr = Math.min(95, score*0.8);
+ const save = Math.min(95, score*0.7);
+ const viral = Math.min(95,(ctr+save)/2);
+ const earnings = (ctr+save+viral)/3/10;
 
  return {
-   ctr,
-   save,
-   viral,
-   earnings: parseFloat(earnings.toFixed(2))
+   ctr:Math.floor(ctr),
+   save:Math.floor(save),
+   viral:Math.floor(viral),
+   earnings:+earnings.toFixed(2)
  };
 }
 
 /* =========================
-   LEARNING SYSTEM
+   PIN GENERATOR
 ========================= */
-function learn(pin, result){
+function createPin(product){
 
- const name = pin.product;
+ const score = luxuryScore(product.name);
+ const money = moneyModel(score);
 
- if(!performanceDB[name]){
-   performanceDB[name] = {
-     posts:0,
-     wins:0,
-     losses:0,
-     totalScore:0,
-     earnings:0
-   };
- }
-
- const p = performanceDB[name];
-
- p.posts++;
- p.totalScore += pin.score;
-
- if(result === "WIN"){
-   p.wins++;
-   p.earnings += pin.earnings;
- } else {
-   p.losses++;
- }
+ return {
+   id: Date.now(),
+   product: product.name,
+   title: `I wish I knew this sooner 😳 ${product.name}`,
+   description: `${product.name} trending in Affordable Luxury niche`,
+   hashtags: "#amazonfinds #affordableluxury #pinterestviral",
+   score,
+   ...money,
+   decision: score > 70 ? "POST" : "HOLD",
+   createdAt: new Date()
+ };
 }
 
 /* =========================
-   SMART PICKER
+   ADD PRODUCT
 ========================= */
-app.get("/smart-product",(req,res)=>{
+app.post("/add-product",(req,res)=>{
 
- let pool = userProducts.length ? userProducts : [
-   {name:"Gold Kitchen Organizer"},
-   {name:"Marble Soap Dispenser"},
-   {name:"Luxury LED Mirror"},
-   {name:"Glass Spice Jar Set"}
- ];
+ const {name} = req.body;
+
+ const product = {name};
+
+ products.push(product);
+
+ res.json({
+   message:"Product added",
+   product
+ });
+});
+
+/* =========================
+   SMART PICK
+========================= */
+app.get("/smart",(req,res)=>{
+
+ if(products.length === 0){
+   return res.json({message:"No products"});
+ }
 
  let best = null;
  let bestScore = 0;
 
- pool.forEach(p=>{
+ products.forEach(p=>{
 
-   let score = scoreProduct(p.name);
-
-   if(performanceDB[p.name]){
-     score += performanceDB[p.name].wins * 5;
-   }
+   const score = luxuryScore(p.name);
 
    if(score > bestScore){
      bestScore = score;
@@ -111,22 +112,11 @@ app.get("/smart-product",(req,res)=>{
    }
  });
 
- const money = moneyModel(bestScore);
-
- const pin = {
-   product: best.name,
-   score: bestScore,
-   ...money,
-   decision: bestScore > 70 ? "POST" : "HOLD",
-   createdAt: new Date()
- };
+ const pin = createPin(best);
 
  if(pin.decision === "POST"){
-   pinQueue.push(pin);
+   pins.push(pin);
  }
-
- dailyStats.totalPosts++;
- dailyStats.totalEarnings += money.earnings;
 
  res.json(pin);
 });
@@ -134,95 +124,89 @@ app.get("/smart-product",(req,res)=>{
 /* =========================
    BATCH GENERATOR
 ========================= */
-app.get("/generate-batch",(req,res)=>{
+app.get("/batch",(req,res)=>{
 
  let batch = [];
 
  for(let i=0;i<5;i++){
 
-   const pool = userProducts.length ? userProducts : [
-     {name:"Gold Kitchen Organizer"},
-     {name:"Marble Soap Dispenser"},
-     {name:"Luxury LED Mirror"}
-   ];
+   const p = products[Math.floor(Math.random()*products.length)];
+   if(!p) continue;
 
-   const p = pool[Math.floor(Math.random()*pool.length)];
-   const score = scoreProduct(p.name);
-   const money = moneyModel(score);
-
-   batch.push({
-     product:p.name,
-     score,
-     ...money,
-     decision: score > 70 ? "POST" : "HOLD"
-   });
-
+   batch.push(createPin(p));
  }
 
  res.json(batch);
 });
 
 /* =========================
-   DASHBOARD (PROFIT VIEW)
+   DASHBOARD (MAIN CONTROL PANEL)
 ========================= */
 app.get("/dashboard",(req,res)=>{
 
  let best = null;
- let bestE = 0;
+ let bestEarn = 0;
 
- Object.keys(performanceDB).forEach(k=>{
+ Object.values(productStats).forEach(p=>{
 
-   const p = performanceDB[k];
-   const avg = p.earnings;
-
-   if(avg > bestE){
-     bestE = avg;
-     best = k;
+   if(p.earnings > bestEarn){
+     bestEarn = p.earnings;
+     best = p;
    }
 
  });
 
- res.json({
-   dailyStats,
-   best_product: best,
-   best_earnings: bestE,
-   total_products_tracked: Object.keys(performanceDB).length
- });
-});
+ res.send(`
+ <h1>📌 PIN AI FACTORY DASHBOARD</h1>
 
-/* =========================
-   REPORT SYSTEM
-========================= */
-app.post("/report",(req,res)=>{
+ <h2>💰 Stats</h2>
+ <p>Total Earnings: $${stats.earnings}</p>
+ <p>Total Posts: ${stats.posts}</p>
+ <p>Total Clicks: ${stats.clicks}</p>
 
- const {product,result,earnings} = req.body;
+ <h2>🏆 Top Product</h2>
+ <p>${best ? best.name : "No data yet"}</p>
 
- learn({product,score:scoreProduct(product),earnings},result);
-
- if(result === "WIN"){
-   dailyStats.totalClicks += 1;
- }
-
- res.json({message:"updated"});
+ <h2>⚡ Actions</h2>
+ <ul>
+   <li><a href="/smart">Run Smart Pick</a></li>
+   <li><a href="/batch">Generate Batch</a></li>
+   <li><a href="/queue">View Pins</a></li>
+   <li><a href="/clear">Clear Data</a></li>
+ </ul>
+ `);
 });
 
 /* =========================
    QUEUE + POSTING
 ========================= */
-app.get("/queue",(req,res)=>res.json(pinQueue));
-app.get("/posted",(req,res)=>res.json(postedPins));
+app.get("/queue",(req,res)=>res.json(pins));
+app.get("/posted",(req,res)=>res.json(posted));
 
+app.get("/clear",(req,res)=>{
+ pins.length = 0;
+ res.json({message:"cleared"});
+});
+
+/* =========================
+   AUTO POST SIMULATION
+========================= */
 setInterval(()=>{
 
- if(pinQueue.length === 0) return;
+ if(pins.length === 0) return;
 
- const pin = pinQueue.shift();
+ const pin = pins.shift();
  pin.status = "POSTED";
  pin.postedAt = new Date();
 
- postedPins.push(pin);
+ posted.push(pin);
 
-},60000);
+ stats.posts++;
+ stats.earnings += pin.earnings || 0;
+
+ console.log("POSTED:",pin.product);
+
+},5000);
 
 /* =========================
    START SERVER
@@ -230,5 +214,5 @@ setInterval(()=>{
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT,()=>{
- console.log("🚀 PIN AI FACTORY v15 MONEY AUTOMATION LIVE");
+ console.log("🚀 PIN AI FACTORY v17 FINAL SAAS DASHBOARD LIVE");
 });
