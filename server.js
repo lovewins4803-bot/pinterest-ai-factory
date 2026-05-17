@@ -3,7 +3,9 @@ import express from "express";
 const app = express();
 app.use(express.json());
 
-// FREE Pinterest AI generator (no API, no billing)
+// =============================
+// PINTEREST AI VIRAL ENGINE
+// =============================
 app.post("/generate-pin", (req, res) => {
   try {
     const { product } = req.body;
@@ -12,15 +14,31 @@ app.post("/generate-pin", (req, res) => {
       return res.status(400).json({ error: "product is required" });
     }
 
-    const title = `🔥 Must-Have ${product} You Didn’t Know You Needed`;
+    const hooks = [
+      "You won’t believe this",
+      "This is blowing up right now",
+      "Everyone is saving this",
+      "Stop scrolling for this",
+      "Pinterest is obsessed with this"
+    ];
 
-    const description = `Discover ${product} that is trending right now.
-Perfect for everyday use and highly recommended by users on Pinterest.
-Don’t miss out before it goes viral!`;
+    const hook = hooks[Math.floor(Math.random() * hooks.length)];
 
-    const hashtags = `#${product.replace(/\s/g, "")} #pinterest #viral #amazonfinds #trending #musthave`;
+    const title = `🔥 ${hook}: ${product} That Everyone Wants`;
 
-    const overlay_text = `DON'T MISS THIS ${product.toUpperCase()}`;
+    const description = `
+${product} is trending right now on Pinterest.
+
+✔ Budget-friendly
+✔ Highly aesthetic
+✔ Extremely useful
+
+This is going viral because people can’t stop saving it.
+`;
+
+    const hashtags = `#${product.replace(/\s/g, "")} #pinterest #viral #trending #aesthetic #musthave #lifehack`;
+
+    const overlay_text = `${hook.toUpperCase()}`;
 
     res.json({
       title,
@@ -34,11 +52,15 @@ Don’t miss out before it goes viral!`;
   }
 });
 
-// Test route
+// =============================
+// HEALTH CHECK ROUTE
+// =============================
 app.get("/", (req, res) => {
-  res.send("Pinterest AI Factory FREE VERSION is running 🚀");
+  res.send("Pinterest AI Factory is LIVE 🚀 (FREE VIRAL ENGINE)");
 });
 
-// Render port fix
+// =============================
+// RENDER PORT FIX
+// =============================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("Server running on port", PORT));
