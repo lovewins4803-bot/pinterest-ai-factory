@@ -13,18 +13,51 @@ let postedPins = [];
    HOME
 ========================= */
 app.get("/", (req, res) => {
-  res.send("PIN AI FACTORY v3 DASHBOARD MODE 🚀");
+  res.send("PIN AI FACTORY v4 TREND ENGINE 🚀");
 });
 
 /* =========================
    HEALTH
 ========================= */
 app.get("/health", (req, res) => {
-  res.json({ status: "ok", version: "v3-dashboard" });
+  res.json({ status: "ok", version: "v4-trend-engine" });
 });
 
 /* =========================
-   DAILY PLAN ENGINE
+   TREND ANALYZER CORE
+========================= */
+function analyzeTrend(product) {
+
+  let base = 50;
+
+  // kitchen products perform better on Pinterest
+  if (product.niche === "kitchen") base += 15;
+
+  // aesthetic products go viral faster
+  if (product.niche === "aesthetic") base += 20;
+
+  // demand factor
+  base += product.demand * 3;
+
+  // randomness simulating market behavior
+  base += Math.floor(Math.random() * 10);
+
+  let label = "LOW";
+  if (base > 70) label = "HIGH";
+  if (base > 85) label = "VIRAL";
+
+  return {
+    score: base,
+    label,
+    suggestion:
+      base > 80
+        ? "Post immediately with urgency hooks"
+        : "Improve image + try later"
+  };
+}
+
+/* =========================
+   DAILY PLAN (WITH TREND AI)
 ========================= */
 app.get("/daily-plan", (req, res) => {
 
@@ -38,12 +71,15 @@ app.get("/daily-plan", (req, res) => {
 
   const pick = products[Math.floor(Math.random() * products.length)];
 
-  let score = 35 + (pick.demand * 5);
+  const trend = analyzeTrend(pick);
 
-  const title = `Trending now 🔥 ${pick.name}`;
-  const hashtags = "#amazonfinds #viral #pinterest #usa #affiliatemarketing";
+  const title = `Stop scrolling 🛑 ${pick.name}`;
+  const hashtags = "#amazonfinds #viral #pinterest #usa #trending";
   const best_time = "2 PM Ethiopia (US morning peak)";
-  const decision = score >= 75 ? "POST" : "HOLD";
+
+  const decision = trend.score >= 75 ? "POST" : "HOLD";
+
+  const image_prompt = `Pinterest aesthetic product photo of ${pick.name}, ultra clean background, soft lighting, viral ecommerce style`;
 
   res.json({
     product: pick.name,
@@ -52,19 +88,21 @@ app.get("/daily-plan", (req, res) => {
     hashtags,
     best_time,
     decision,
-    score
+    trend_score: trend.score,
+    trend_label: trend.label,
+    suggestion: trend.suggestion,
+    image_prompt
   });
 });
 
 /* =========================
-   GENERATE PIN
+   QUEUE SYSTEM
 ========================= */
 app.get("/generate-pin", (req, res) => {
 
   const pin = {
     id: Date.now(),
     product: "Auto Product",
-    title: "Generated Pinterest Pin",
     status: "QUEUED",
     createdAt: new Date().toISOString()
   };
@@ -72,7 +110,7 @@ app.get("/generate-pin", (req, res) => {
   pinQueue.push(pin);
 
   res.json({
-    message: "Pin added",
+    message: "queued",
     pin,
     queueSize: pinQueue.length
   });
@@ -80,23 +118,17 @@ app.get("/generate-pin", (req, res) => {
 });
 
 /* =========================
-   QUEUE
+   QUEUE VIEW
 ========================= */
 app.get("/queue", (req, res) => {
-  res.json({
-    total: pinQueue.length,
-    pins: pinQueue
-  });
+  res.json({ total: pinQueue.length, pins: pinQueue });
 });
 
 /* =========================
    POSTED
 ========================= */
 app.get("/posted", (req, res) => {
-  res.json({
-    total: postedPins.length,
-    pins: postedPins
-  });
+  res.json({ total: postedPins.length, pins: postedPins });
 });
 
 /* =========================
@@ -113,34 +145,9 @@ setInterval(() => {
 
   postedPins.push(pin);
 
-  console.log("AUTO POSTED:", pin.id);
+  console.log("POSTED:", pin.id);
 
 }, 60000);
-
-/* =========================
-   📱 DASHBOARD (NEW CONTROL CENTER)
-========================= */
-app.get("/dashboard", (req, res) => {
-
-  const dashboard = {
-    summary: {
-      queued: pinQueue.length,
-      posted: postedPins.length,
-      system: "ACTIVE"
-    },
-    quickActions: [
-      "/generate-pin",
-      "/queue",
-      "/posted",
-      "/daily-plan"
-    ],
-    recommendation: pinQueue.length === 0
-      ? "Generate new pins"
-      : "You have pending pins to process"
-  };
-
-  res.json(dashboard);
-});
 
 /* =========================
    START SERVER
@@ -148,5 +155,5 @@ app.get("/dashboard", (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`Pin AI Factory v3 Dashboard running on port ${PORT}`);
+  console.log(`PIN AI FACTORY v4 running on port ${PORT}`);
 });
